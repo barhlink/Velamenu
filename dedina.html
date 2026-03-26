@@ -750,6 +750,13 @@ body {
 
 </div>
 
+<!-- LOADING OVERLAY — zobrazí se při startu než se načtou data -->
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:'Nunito',sans-serif;">
+  <div style="font-size:18px;font-weight:700;color:var(--text);">Načítám data…</div>
+  <div id="loading-msg" style="font-size:14px;font-weight:600;color:var(--text-light);text-align:center;padding:0 32px;"></div>
+  <button id="loading-retry" onclick="loadData()" style="display:none;padding:14px 28px;background:var(--blue);color:white;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">Zkusit znovu</button>
+</div>
+
 <!-- DEV PANEL (přístup: podržet logo 2s) -->
 <div class="dev-panel" id="dev-panel">
   <div class="dev-box">
@@ -764,32 +771,31 @@ body {
 
 <script>
 // ======================================================
-// DATA
+// KONFIGURACE — nastav IP čtečky a cesty k souborům
 // ======================================================
-// TODO: Nahradit reálným denním exportem z Make/Bubble
-const deti = [
-  { uuid:"a3f9c21b", jmeno:"Adam Novák",       jidlo:"Svíčková na smetaně" },
-  { uuid:"99d4e12f", jmeno:"Jana Svobodová",    jidlo:"Kuřecí řízek s bramborovou kaší" },
-  { uuid:"b7e1a55c", jmeno:"Tomáš Krejčí",     jidlo:"Čočka na kyselo s vejcem" },
-  { uuid:"c2d8f034", jmeno:"Eliška Marková",   jidlo:"Svíčková na smetaně" },
-  { uuid:"e91b3a77", jmeno:"Jakub Dvořák",     jidlo:"Zeleninová polévka a salát" },
-  { uuid:"f44c2b19", jmeno:"Lucie Horáková",   jidlo:"Kuřecí řízek s bramborovou kaší" },
-  { uuid:"a11b2c3d", jmeno:"Martin Procházka", jidlo:"Svíčková na smetaně" },
-  { uuid:"d9e8f7a6", jmeno:"Tereza Nováková",  jidlo:"Čočka na kyselo s vejcem" },
-];
-
-// UUID → jméno mapování (bude naplněno z 2N čtečky)
-// Formát: { "uuid_z_ctechy": "uuid_v_deti_poli" }
-const uuidMap = {
-  "a3f9c21b": "a3f9c21b",
-  "99d4e12f": "99d4e12f",
-  "b7e1a55c": "b7e1a55c",
+const CFG = {
+  twonIp:      "192.168.1.50",       // ← IP adresa 2N čtečky v síti školy
+  twonUser:    "admin",               // ← přihlašovací jméno 2N HTTP API
+  twonPass:    "admin",               // ← heslo 2N HTTP API
+  exportUrl:   "data/export.json",    // denní export z Make: [{ uuid, jmeno, jidlo }]
+  uuidmapUrl:  "data/uuidmap.json",   // mapování 2N ID → Bubble UUID: { "hex8": "uuid" }
+  twonEnabled: true,                  // false → vypne polling (testování bez čtečky)
+  fieldName:   "cardOrCode",          // pole v 2N event objektu s ID otisku
 };
+
+// ======================================================
+// DATA — načítá se z JSON souborů (viz loadData níže)
+// ======================================================
+let deti    = [];
+let uuidMap = {};
 
 const vydano  = new Set();
 const log     = [];
-let autoTimer     = null;
-let countdownInt  = null;
+let autoTimer    = null;
+let countdownInt = null;
+let pollingPaused = false; // debounce — pauza po otisku dokud se nevrátí idle
+let pollInterval  = null;
+let twon2nLastId  = 0;
 
 // ======================================================
 // HODINY
@@ -819,6 +825,7 @@ function showView(name) {
 
 function goIdle() {
   clearAuto();
+  pollingPaused = false;
   hideProgress();
   document.getElementById("btn-override").classList.remove("highlighted");
   showView("idle");
@@ -978,19 +985,80 @@ function overrideVydej(uuid) {
 }
 
 // ======================================================
-// ČTEČKA — vstupní bod pro reálné 2N API
+// ČTEČKA — vstupní bod z 2N API
 // ======================================================
-// Tato funkce bude volána když čtečka vrátí UUID
 function onFingerprint(uuid) {
+  if (pollingPaused) return;
+  pollingPaused = true; // debounce — ignoruj další otisky dokud se nevrátí idle
+
   const mappedUuid = uuidMap[uuid] || uuid;
   const dite = deti.find(d => d.uuid === mappedUuid);
 
-  if (!dite)              { ukazVysledek(null, "err");  return; }
-  if (vydano.has(uuid))   { ukazVysledek(dite, "warn"); return; }
+  if (!dite)                    { ukazVysledek(null, "err");  return; }
+  if (vydano.has(mappedUuid))   { ukazVysledek(dite, "warn"); return; }
 
   zaloguj(dite, false);
-  vydano.add(uuid);
+  vydano.add(mappedUuid);
   ukazVysledek(dite, "ok");
+}
+
+// ======================================================
+// NAČTENÍ DAT ZE SOUBORŮ (Make export + UUID mapa)
+// ======================================================
+async function loadData() {
+  const overlay   = document.getElementById("loading-overlay");
+  const msg       = document.getElementById("loading-msg");
+  const retryBtn  = document.getElementById("loading-retry");
+  overlay.style.display = "flex";
+  msg.textContent       = "";
+  retryBtn.style.display = "none";
+
+  try {
+    const [exportRes, uuidRes] = await Promise.all([
+      fetch(CFG.exportUrl),
+      fetch(CFG.uuidmapUrl),
+    ]);
+    if (!exportRes.ok)  throw new Error("export.json: HTTP " + exportRes.status);
+    if (!uuidRes.ok)    throw new Error("uuidmap.json: HTTP " + uuidRes.status);
+
+    deti    = await exportRes.json();
+    uuidMap = await uuidRes.json();
+
+    overlay.style.display = "none";
+    start2NPoll();
+  } catch (err) {
+    msg.textContent        = "Chyba: " + err.message;
+    retryBtn.style.display = "block";
+  }
+}
+
+// ======================================================
+// 2N POLLING — direct fetch k 2N Access Unit
+// Vyžaduje kiosk mode (--disable-web-security) nebo CORS na 2N
+// ======================================================
+function start2NPoll() {
+  if (!CFG.twonEnabled) return;
+  clearInterval(pollInterval);
+  pollInterval = setInterval(poll2N, 1000);
+}
+
+async function poll2N() {
+  const auth = "Basic " + btoa(CFG.twonUser + ":" + CFG.twonPass);
+  try {
+    const res    = await fetch(
+      `http://${CFG.twonIp}/api/log/pull?id=${twon2nLastId}&count=100`,
+      { headers: { Authorization: auth } }
+    );
+    const data   = await res.json();
+    const events = data?.data?.events || [];
+    for (const ev of events) {
+      if (ev.id > twon2nLastId) twon2nLastId = ev.id;
+      const rawId = ev[CFG.fieldName];
+      if (rawId) onFingerprint(String(rawId).toLowerCase());
+    }
+  } catch {
+    // Tiché selhání — 2N dočasně nedostupná, zkusíme za vteřinu
+  }
 }
 
 // ======================================================
@@ -1020,6 +1088,7 @@ function devSim(scenario) {
 // INIT
 // ======================================================
 showView("idle");
+loadData();
 </script>
 </body>
 </html>

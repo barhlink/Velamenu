@@ -399,9 +399,13 @@ body {
         </div>
       </div>
       <div class="header-right">
-        <div style="margin-bottom:4px;">
+        <div style="margin-bottom:2px;">
           <span class="conn-dot" id="conn-dot"></span>
           <span class="conn-label" id="conn-label">připojování…</span>
+        </div>
+        <div style="margin-bottom:4px;">
+          <span class="conn-dot" id="twon-dot"></span>
+          <span class="conn-label">2N čtečka</span>
         </div>
         <div class="header-clock" id="clock">--:--</div>
         <div class="header-date"  id="datum"></div>
@@ -499,14 +503,25 @@ const SERVER_IP   = "192.168.1.100"; // ← sem dej IP serveru
 const SERVER_PORT = 3000;
 const WS_URL      = `ws://${SERVER_IP}:${SERVER_PORT}`;
 
+// Konfigurace 2N polling
+// Polling běží přes proxy na server.js (vyhne se CORS)
+// Pole fieldName odpovídá názvu v 2N API odpovědi — zpravidla "cardOrCode"
+const CFG_2N = {
+  enabled:   true,           // false → vypne polling (dev bez čtečky)
+  fieldName: "cardOrCode",   // pole v 2N event objektu s ID otisku
+  lastId:    0,              // ID posledního zpracovaného eventu
+};
+
 // ======================================================
 // STAV
 // ======================================================
-let deti         = [];
-let ws           = null;
-let autoTimer    = null;
-let countdownInt = null;
+let deti           = [];
+let ws             = null;
+let autoTimer      = null;
+let countdownInt   = null;
 let reconnectTimer = null;
+let pollingPaused  = false; // debounce — pauza po otisku dokud se nevrátí idle
+let pollInterval   = null;
 
 // ======================================================
 // HODINY
@@ -529,6 +544,7 @@ function connect() {
   ws.onopen = () => {
     setConn(true);
     clearTimeout(reconnectTimer);
+    start2NPoll();
   };
 
   ws.onmessage = (e) => {
@@ -585,12 +601,44 @@ function handleMessage(msg) {
 // FINGERPRINT — vstupní bod z 2N API
 // ======================================================
 function onFingerprint(uuid) {
+  if (pollingPaused) return;
+  pollingPaused = true; // debounce — ignoruj další otisky dokud se nevrátí idle
   if (ws && ws.readyState === WebSocket.OPEN) {
     wsSend({ type: "fingerprint", uuid });
   } else {
     // Offline fallback — zobraz chybu
     ukazVysledek({ status: "err" });
   }
+}
+
+// ======================================================
+// 2N POLLING — poll každou sekundu přes server proxy
+// ======================================================
+function start2NPoll() {
+  if (!CFG_2N.enabled) return;
+  clearInterval(pollInterval);
+  pollInterval = setInterval(poll2N, 1000);
+}
+
+async function poll2N() {
+  try {
+    const res    = await fetch(`http://${SERVER_IP}:${SERVER_PORT}/api/2n-poll?id=${CFG_2N.lastId}`);
+    const data   = await res.json();
+    const events = data.events || [];
+    set2nStatus(true);
+    for (const ev of events) {
+      if (ev.id > CFG_2N.lastId) CFG_2N.lastId = ev.id;
+      const rawId = ev[CFG_2N.fieldName];
+      if (rawId) onFingerprint(String(rawId).toLowerCase());
+    }
+  } catch {
+    set2nStatus(false);
+  }
+}
+
+function set2nStatus(ok) {
+  const dot = document.getElementById("twon-dot");
+  if (dot) dot.className = "conn-dot " + (ok ? "online" : "offline");
 }
 
 // ======================================================
@@ -603,6 +651,7 @@ function showView(name) {
 
 function goIdle() {
   clearAuto();
+  pollingPaused = false;
   document.getElementById("btn-override").classList.remove("highlighted");
   showView("idle");
 }

@@ -1,0 +1,10 @@
+[
+  { "uuid": "uuid-adam-bubble",    "jmeno": "Adam Novák",       "jidlo": "Svíčková na smetaně" },
+  { "uuid": "uuid-jana-bubble",    "jmeno": "Jana Svobodová",   "jidlo": "Kuřecí řízek s bramborovou kaší" },
+  { "uuid": "uuid-tomas-bubble",   "jmeno": "Tomáš Krejčí",    "jidlo": "Čočka na kyselo s vejcem" },
+  { "uuid": "uuid-eliska-bubble",  "jmeno": "Eliška Marková",  "jidlo": "Svíčková na smetaně" },
+  { "uuid": "uuid-jakub-bubble",   "jmeno": "Jakub Dvořák",    "jidlo": "Zeleninová polévka a salát" },
+  { "uuid": "uuid-lucie-bubble",   "jmeno": "Lucie Horáková",  "jidlo": "Kuřecí řízek s bramborovou kaší" },
+  { "uuid": "uuid-martin-bubble",  "jmeno": "Martin Procházka","jidlo": "Svíčková na smetaně" },
+  { "uuid": "uuid-tereza-bubble",  "jmeno": "Tereza Nováková", "jidlo": "Čočka na kyselo s vejcem" }
+]
