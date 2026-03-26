@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Velamenu – Hloubětín Výdej</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue:         #1AABDC;
+  --blue-dark:    #1490BC;
+  --blue-light:   #E8F7FD;
+  --blue-mid:     #C5E8F5;
+  --yellow:       #F5C842;
+  --green:        #4CB87A;
+  --green-bg:     #EAF8F1;
+  --green-border: rgba(76,184,122,0.25);
+  --orange:       #F0882A;
+  --orange-bg:    #FEF3E8;
+  --orange-border:rgba(240,136,42,0.25);
+  --red:          #E05050;
+  --red-bg:       #FDF0F0;
+  --red-border:   rgba(224,80,80,0.25);
+  --text:         #2A5F7A;
+  --text-light:   #6BAFC8;
+  --text-hint:    #AACFDF;
+  --bg:           #F4FBFF;
+  --radius:       20px;
+  --radius-sm:    12px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  width: 100%;
+  max-width: 680px; /* Výdej může být na větším tabletu */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ======== HEADER ======== */
+.header { background: var(--blue); padding: 16px 24px 0; flex-shrink: 0; }
+
+.header-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+}
+
+.logo-area { display: flex; align-items: center; gap: 11px; }
+
+.logo-circle {
+  width: 42px; height: 42px;
+  background: var(--yellow); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+}
+
+.logo-circle svg { width: 24px; height: 24px; }
+.logo-name { font-size: 22px; font-weight: 900; color: white; }
+
+.location-tag {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+}
+
+.header-stats {
+  text-align: right;
+}
+
+.stats-count {
+  font-size: 28px; font-weight: 900;
+  color: white; line-height: 1;
+}
+
+.stats-label {
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.header-time {
+  text-align: right;
+  border-left: 1px solid rgba(255,255,255,0.2);
+  padding-left: 16px;
+}
+
+.header-clock { font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.9); line-height: 1; }
+.header-date  { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+.conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; margin-right: 4px;
+  background: rgba(255,255,255,0.3); transition: background 0.3s;
+}
+.conn-dot.online  { background: #4CB87A; }
+.conn-dot.offline { background: var(--orange); }
+.conn-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5); }
+
+.wave { line-height: 0; margin-top: -1px; }
+.wave svg { display: block; width: 100%; height: 36px; }
+
+/* Offline banner */
+.offline-banner {
+  background: var(--orange); color: white;
+  font-size: 12px; font-weight: 800;
+  text-align: center; padding: 8px; display: none;
+}
+.offline-banner.show { display: block; }
+
+/* ======== MAIN LAYOUT ======== */
+.main {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+  padding: 12px 16px 0;
+  gap: 12px;
+}
+
+/* ======== PŘÍCHOZÍ KARTA (velká) ======== */
+.incoming-area {
+  flex-shrink: 0;
+}
+
+.incoming-label {
+  font-size: 11px; font-weight: 800;
+  color: var(--text-hint);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+/* Prázdný stav */
+.incoming-empty {
+  background: white;
+  border-radius: var(--radius);
+  border: 2px dashed var(--blue-mid);
+  padding: 32px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+
+.incoming-empty-icon { font-size: 36px; opacity: 0.4; }
+.incoming-empty-text { font-size: 15px; font-weight: 700; color: var(--text-hint); text-align: center; }
+
+/* Aktivní příchozí karta */
+.incoming-card {
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  display: flex; align-items: center; gap: 20px;
+  animation: slideInCard 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+  display: none;
+}
+
+.incoming-card.ok   { background: var(--green-bg);  border: 2.5px solid rgba(76,184,122,0.4); }
+.incoming-card.warn { background: var(--orange-bg); border: 2.5px solid rgba(240,136,42,0.35); }
+
+@keyframes slideInCard {
+  from { opacity: 0; transform: translateX(-20px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.card-icon { font-size: 44px; flex-shrink: 0; line-height: 1; }
+
+.card-body { flex: 1; min-width: 0; }
+
+.card-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 12px; border-radius: 100px;
+  font-size: 11px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.ok   .card-badge { background: rgba(76,184,122,0.18);  color: #2A8A53; }
+.warn .card-badge { background: rgba(240,136,42,0.18);  color: #B5600A; }
+
+.card-name {
+  font-size: 18px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+/* Hlavní text — 28px konzistentně */
+.card-meal {
+  font-size: 28px; font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: break-word; hyphens: auto;
+}
+
+.ok   .card-meal { color: var(--green); }
+.warn .card-meal { color: var(--orange); }
+
+.card-meta { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 4px; }
+
+.card-time {
+  flex-shrink: 0; text-align: right;
+}
+
+.card-time-val { font-size: 24px; font-weight: 900; color: var(--text-light); line-height: 1; }
+.card-time-lbl { font-size: 10px; font-weight: 700; color: var(--text-hint); margin-top: 2px; }
+
+/* ======== FRONTA (seznam) ======== */
+.queue-area {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+}
+
+.queue-label {
+  font-size: 11px; font-weight: 800;
+  color: var(--text-hint);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 8px; flex-shrink: 0;
+}
+
+.queue-list {
+  flex: 1; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 6px;
+  padding-bottom: 4px;
+}
+
+.queue-item {
+  background: white;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0,0,0,0.05);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.q-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.q-dot.fp       { background: var(--green); }
+.q-dot.override { background: var(--orange); }
+.q-dot.warn     { background: var(--orange); opacity: 0.5; }
+
+.q-name { font-size: 15px; font-weight: 800; color: var(--text); }
+.q-meal { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
+.q-time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-hint); white-space: nowrap; }
+
+.queue-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px; font-weight: 700;
+  color: var(--text-hint);
+}
+
+/* ======== BOTTOM BAR ======== */
+.bottombar {
+  flex-shrink: 0;
+  padding: 10px 16px 24px;
+  display: flex; gap: 10px;
+}
+
+.btn-bar {
+  flex: 1; padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--blue-mid); background: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px; font-weight: 800; color: var(--blue-dark);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: all 0.15s; min-height: 52px;
+}
+
+.btn-bar:hover  { background: var(--blue-light); border-color: var(--blue); }
+.btn-bar:active { transform: scale(0.97); }
+
+/* Override panel (modál overlay) */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 50;
+  align-items: flex-end; justify-content: center;
+  padding: 20px;
+}
+.overlay.open { display: flex; }
+
+.panel {
+  background: white; border-radius: var(--radius);
+  overflow: hidden; display: flex; flex-direction: column;
+  width: 100%; max-width: 480px; max-height: 70vh;
+}
+
+.panel-head { background: var(--blue); padding: 18px 22px 14px; flex-shrink: 0; }
+.panel-title { font-size: 17px; font-weight: 900; color: white; margin-bottom: 10px; }
+
+.panel-search {
+  width: 100%; padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: none; background: rgba(255,255,255,0.18);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px; font-weight: 600;
+  color: white; outline: none; min-height: 48px;
+}
+
+.panel-search::placeholder { color: rgba(255,255,255,0.5); }
+.panel-search:focus { background: rgba(255,255,255,0.28); }
+
+.panel-list { flex: 1; overflow-y: auto; }
+
+.panel-item {
+  padding: 16px 22px; border-bottom: 1px solid #EEF7FC;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; cursor: pointer; transition: background 0.1s; min-height: 64px;
+}
+
+.panel-item:last-child { border-bottom: none; }
+.panel-item:hover  { background: var(--blue-light); }
+.panel-item:active { background: var(--blue-mid); }
+
+.panel-item-name { font-size: 16px; font-weight: 800; color: var(--text); }
+.panel-item-sub  { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 2px; }
+.panel-item-arrow { font-size: 22px; color: var(--blue); font-weight: 700; flex-shrink: 0; }
+.panel-empty { padding: 40px; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-hint); }
+
+.panel-cancel {
+  flex-shrink: 0; width: 100%; padding: 16px;
+  border: none; border-top: 1px solid #EEF7FC; background: none;
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+  color: var(--text-hint); cursor: pointer; min-height: 52px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- OFFLINE BANNER -->
+  <div class="offline-banner" id="offline-banner">
+    ⚠️ Odpojeno od serveru — pokus o připojení…
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-row">
+      <div class="logo-area">
+        <div class="logo-circle">
+          <svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="13" cy="13" r="10" fill="white" opacity="0.9"/>
+            <path d="M9 8.5L9 12.5Q9 15 11.5 15L11.5 19" stroke="#E6B020" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <path d="M10.8 8.5L10.8 12.5" stroke="#E6B020" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+            <path d="M16 8.5Q18.5 10.5 17.5 14L17.5 19" stroke="#E6B020" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <path d="M11.8 11.5Q13 10.2 14.2 11.5Q13 12.8 11.8 11.5Z" fill="#E05050"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">Velamenu</div>
+          <div class="location-tag">Hloubětín · Výdej</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="header-stats">
+          <div class="stats-count" id="stats-count">0</div>
+          <div class="stats-label">vydáno dnes</div>
+          <div style="margin-top:4px;">
+            <span class="conn-dot" id="conn-dot"></span>
+            <span class="conn-label" id="conn-label">připojování…</span>
+          </div>
+        </div>
+        <div class="header-time">
+          <div class="header-clock" id="clock">--:--</div>
+          <div class="header-date"  id="datum"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wave">
+    <svg viewBox="0 0 680 36" preserveAspectRatio="none">
+      <path d="M0,0 C80,28 160,38 260,26 C360,14 400,4 480,10 C550,15 620,28 680,22 L680,0 Z" fill="#1AABDC"/>
+    </svg>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- PŘÍCHOZÍ -->
+    <div class="incoming-area">
+      <div class="incoming-label">Právě přichází</div>
+
+      <!-- Prázdný stav -->
+      <div class="incoming-empty" id="incoming-empty">
+        <div class="incoming-empty-icon">👀</div>
+        <div class="incoming-empty-text">Čeká se na příchod dětí…</div>
+      </div>
+
+      <!-- Aktivní karta -->
+      <div class="incoming-card" id="incoming-card">
+        <div class="card-icon" id="c-icon"></div>
+        <div class="card-body">
+          <div class="card-badge" id="c-badge"></div>
+          <div class="card-name"  id="c-name"></div>
+          <div class="card-meal"  id="c-meal"></div>
+          <div class="card-meta"  id="c-meta"></div>
+        </div>
+        <div class="card-time">
+          <div class="card-time-val" id="c-time"></div>
+          <div class="card-time-lbl">příchod</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRONTA DNE -->
+    <div class="queue-area">
+      <div class="queue-label">Dnes vydáno</div>
+      <div class="queue-list" id="queue-list">
+        <div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <button class="btn-bar" onclick="openOverride()">☰ Ruční výběr</button>
+  </div>
+
+</div>
+
+<!-- OVERRIDE OVERLAY -->
+<div class="overlay" id="override-overlay">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Ruční výběr dítěte</div>
+      <input class="panel-search" type="text" placeholder="Hledat jméno…"
+             id="override-input" oninput="filterKids(this.value)">
+    </div>
+    <div class="panel-list" id="override-list"></div>
+    <button class="panel-cancel" onclick="closeOverride()">Zrušit</button>
+  </div>
+</div>
+
+<script>
+// ======================================================
+// KONFIGURACE — stejná IP jako v čtečce
+// ======================================================
+const SERVER_IP   = "192.168.1.100"; // ← sem dej IP serveru
+const SERVER_PORT = 3000;
+const WS_URL      = `ws://${SERVER_IP}:${SERVER_PORT}`;
+
+// ======================================================
+// STAV
+// ======================================================
+let deti           = [];
+let ws             = null;
+let reconnectTimer = null;
+let incomingTimer  = null;
+
+// ======================================================
+// HODINY
+// ======================================================
+function tick() {
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    n.toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+  document.getElementById("datum").textContent =
+    n.toLocaleDateString("cs-CZ",{ weekday:"short", day:"numeric", month:"numeric" });
+}
+tick(); setInterval(tick, 1000);
+
+// ======================================================
+// WEBSOCKET
+// ======================================================
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    setConn(true);
+    clearTimeout(reconnectTimer);
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+
+  ws.onclose = () => {
+    setConn(false);
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function setConn(online) {
+  const dot    = document.getElementById("conn-dot");
+  const label  = document.getElementById("conn-label");
+  const banner = document.getElementById("offline-banner");
+  dot.className   = "conn-dot " + (online ? "online" : "offline");
+  label.textContent = online ? "připojeno" : "offline";
+  banner.classList.toggle("show", !online);
+}
+
+function wsSend(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+// ======================================================
+// ZPRÁVY
+// ======================================================
+function handleMessage(msg) {
+  switch (msg.type) {
+    case "init":
+      deti = msg.deti || [];
+      // Obnov frontu z logu
+      (msg.log || []).slice().reverse().forEach(item => addToQueue(item));
+      updateStats();
+      break;
+
+    case "vydej_new":
+      ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
+      addToQueue({ jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override });
+      updateStats();
+      break;
+
+    case "vydej_warn":
+      ukazPrichozi(msg.dite, "warn", msg.cas, false);
+      break;
+
+    case "reset":
+      document.getElementById("queue-list").innerHTML = '<div class="queue-empty">Zatím nikdo 🙂</div>';
+      hidePrichozi();
+      updateStats();
+      break;
+  }
+}
+
+// ======================================================
+// PŘÍCHOZÍ KARTA
+// ======================================================
+function ukazPrichozi(dite, typ, cas, override) {
+  clearTimeout(incomingTimer);
+
+  const card  = document.getElementById("incoming-card");
+  const empty = document.getElementById("incoming-empty");
+
+  card.className = "incoming-card " + typ;
+
+  const cfg = {
+    ok:   { icon: "✅", badge: override ? "Vydej jídlo – ručně" : "Vydej jídlo", meta: override ? "Zadáno obsluhou" : "Právě dorazilo" },
+    warn: { icon: "⚠️", badge: "Pozor – již vydáno", meta: "Jídlo již bylo vydáno dnes" },
+  };
+
+  const c = cfg[typ] || cfg.ok;
+  document.getElementById("c-icon").textContent  = c.icon;
+  document.getElementById("c-badge").textContent = c.badge;
+  document.getElementById("c-name").textContent  = dite.jmeno;
+  document.getElementById("c-meal").textContent  = dite.jidlo;
+  document.getElementById("c-meta").textContent  = c.meta;
+  document.getElementById("c-time").textContent  = cas || "";
+
+  empty.style.display = "none";
+  card.style.display  = "flex";
+
+  // Po 12s schovat kartu (nový příchod ji přepíše)
+  incomingTimer = setTimeout(hidePrichozi, 12000);
+}
+
+function hidePrichozi() {
+  document.getElementById("incoming-card").style.display  = "none";
+  document.getElementById("incoming-empty").style.display = "flex";
+}
+
+// ======================================================
+// FRONTA
+// ======================================================
+let queueCount = 0;
+
+function addToQueue(item) {
+  const list  = document.getElementById("queue-list");
+  const empty = list.querySelector(".queue-empty");
+  if (empty) empty.remove();
+
+  const el = document.createElement("div");
+  el.className = "queue-item";
+  el.innerHTML = `
+    <div class="q-dot ${item.override ? 'override' : 'fp'}"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="q-name">${item.jmeno}</div>
+      <div class="q-meal">${item.jidlo}${item.override
+        ? ' · <span style="color:var(--orange)">ručně</span>' : ''}</div>
+    </div>
+    <div class="q-time">${item.cas || ""}</div>
+  `;
+
+  // Nové záznamy nahoře
+  list.insertBefore(el, list.firstChild);
+  queueCount++;
+}
+
+function updateStats() {
+  document.getElementById("stats-count").textContent = queueCount;
+}
+
+// ======================================================
+// OVERRIDE
+// ======================================================
+function openOverride() {
+  renderOverride(deti);
+  document.getElementById("override-input").value = "";
+  document.getElementById("override-overlay").classList.add("open");
+  setTimeout(() => document.getElementById("override-input").focus(), 80);
+}
+
+function closeOverride() {
+  document.getElementById("override-overlay").classList.remove("open");
+}
+
+function filterKids(q) {
+  renderOverride(q ? deti.filter(d => d.jmeno.toLowerCase().includes(q.toLowerCase())) : deti);
+}
+
+function renderOverride(seznam) {
+  const list = document.getElementById("override-list");
+  list.innerHTML = seznam.length === 0
+    ? '<div class="panel-empty">Nikdo nenalezen</div>'
+    : seznam.map(d => `
+        <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
+          <div style="min-width:0;">
+            <div class="panel-item-name">${d.jmeno}</div>
+            <div class="panel-item-sub">${d.jidlo}</div>
+          </div>
+          <div class="panel-item-arrow">›</div>
+        </div>`).join("");
+}
+
+function overrideVydej(uuid) {
+  wsSend({ type: "override", uuid });
+  closeOverride();
+  queueCount++;
+  updateStats();
+}
+
+// ======================================================
+// INIT
+// ======================================================
+connect();
+</script>
+</body>
+</html>

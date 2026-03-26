@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Velamenu – Dědina</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue:          #1AABDC;
+  --blue-dark:     #1490BC;
+  --blue-light:    #E8F7FD;
+  --blue-mid:      #C5E8F5;
+  --yellow:        #F5C842;
+  --green:         #4CB87A;
+  --green-bg:      #EAF8F1;
+  --green-border:  rgba(76,184,122,0.25);
+  --orange:        #F0882A;
+  --orange-bg:     #FEF3E8;
+  --orange-border: rgba(240,136,42,0.25);
+  --red:           #E05050;
+  --red-bg:        #FDF0F0;
+  --red-border:    rgba(224,80,80,0.25);
+  --text:          #2A5F7A;
+  --text-light:    #6BAFC8;
+  --text-hint:     #AACFDF;
+  --bg:            #F4FBFF;
+  --radius:        24px;
+  --radius-sm:     14px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  width: 100%;
+  max-width: 540px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ======== HEADER ======== */
+.header {
+  background: var(--blue);
+  padding: 20px 24px 0;
+  flex-shrink: 0;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+}
+
+.logo-area { display: flex; align-items: center; gap: 11px; }
+
+.logo-circle {
+  width: 46px;
+  height: 46px;
+  background: var(--yellow);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+}
+
+.logo-circle svg { width: 26px; height: 26px; }
+
+.logo-name {
+  font-size: 24px;
+  font-weight: 900;
+  color: white;
+}
+
+.location-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.header-right { text-align: right; }
+
+.header-clock {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  line-height: 1;
+}
+
+.header-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  margin-top: 3px;
+}
+
+.wave { line-height: 0; margin-top: -1px; }
+.wave svg { display: block; width: 100%; height: 44px; }
+
+/* ======== STAGE ======== */
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.view { display: none; flex-direction: column; height: 100%; }
+.view.active { display: flex; }
+
+/* ======== IDLE ======== */
+#view-idle {
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+  gap: 16px;
+}
+
+.idle-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Fingerprint animace */
+.fp-outer {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(26,171,220,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2.8s ease-in-out infinite;
+}
+
+.fp-inner {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--blue-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(26,171,220,0.18);
+}
+
+.fp-inner svg {
+  width: 48px;
+  height: 48px;
+  stroke: var(--blue);
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+@keyframes pulse {
+  0%,100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(26,171,220,0.2); }
+  50%      { transform: scale(1.05); box-shadow: 0 0 0 18px rgba(26,171,220,0); }
+}
+
+.idle-headline {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.idle-sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-align: center;
+  margin-top: -8px;
+}
+
+.idle-infobox {
+  background: white;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--blue-mid);
+  padding: 14px 22px;
+  text-align: center;
+  width: 100%;
+}
+
+.idle-infobox-day {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.idle-infobox-hours {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-hint);
+  margin-top: 3px;
+}
+
+/* ======== RESULT ======== */
+#view-result { justify-content: space-between; }
+
+.result-card {
+  flex: 1;
+  border-radius: var(--radius);
+  padding: 30px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.result-card.ok   { background: var(--green-bg);  border: 2px solid var(--green-border); }
+.result-card.warn { background: var(--orange-bg); border: 2px solid var(--orange-border); }
+.result-card.err  { background: var(--red-bg);    border: 2px solid var(--red-border); }
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.93) translateY(18px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.result-icon { font-size: 50px; line-height: 1; margin-bottom: 12px; }
+
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 16px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  width: fit-content;
+}
+
+.ok   .result-badge { background: rgba(76,184,122,0.18);  color: #2A8A53; }
+.warn .result-badge { background: rgba(240,136,42,0.18);  color: #B5600A; }
+.err  .result-badge { background: rgba(224,80,80,0.18);   color: #A03030; }
+
+.result-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+/* Hlavní text — 28px konzistentně napříč všemi stavy */
+.result-meal {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 10px;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.ok   .result-meal { color: var(--green); }
+.warn .result-meal { color: var(--orange); }
+.err  .result-meal { color: var(--red); }
+
+.result-meta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+/* Hint pro chybu */
+.result-hint {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(224,80,80,0.08);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+  display: none;
+  line-height: 1.5;
+}
+
+.err .result-hint { display: block; }
+
+.btn-zpet {
+  margin-top: auto;
+  padding-top: 16px;
+  align-self: flex-start;
+}
+
+.btn-zpet button {
+  padding: 13px 26px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.85);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 48px;
+}
+
+.btn-zpet button:hover  { background: white; color: var(--text); }
+.btn-zpet button:active { transform: scale(0.97); }
+
+/* Progress bar */
+.progress-wrap { margin: 8px 0 4px; flex-shrink: 0; }
+
+.progress-track {
+  height: 6px;
+  background: rgba(0,0,0,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  width: 100%;
+  transition: width linear;
+}
+
+.ok   .progress-fill { background: var(--green); }
+.warn .progress-fill { background: var(--orange); }
+
+.progress-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-hint);
+  text-align: center;
+  margin-top: 5px;
+}
+
+/* ======== PANEL (override + log) ======== */
+.view-panel { animation: slideUp 0.25s cubic-bezier(0.34, 1.2, 0.64, 1); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panel {
+  flex: 1;
+  background: white;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--blue-mid);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-head {
+  background: var(--blue);
+  padding: 18px 22px 14px;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.panel-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.panel-head-row .panel-title { margin-bottom: 0; }
+
+.log-count-pill {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+}
+
+.panel-search {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: rgba(255,255,255,0.18);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  outline: none;
+  min-height: 48px;
+}
+
+.panel-search::placeholder { color: rgba(255,255,255,0.5); }
+.panel-search:focus         { background: rgba(255,255,255,0.28); }
+
+.panel-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel-item {
+  padding: 16px 22px;
+  border-bottom: 1px solid #EEF7FC;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  min-height: 64px;
+}
+
+.panel-item:last-child { border-bottom: none; }
+.panel-item:hover  { background: var(--blue-light); }
+.panel-item:active { background: var(--blue-mid); }
+
+.panel-item-name { font-size: 16px; font-weight: 800; color: var(--text); }
+.panel-item-sub  { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 2px; }
+.panel-item-arrow { font-size: 22px; color: var(--blue); font-weight: 700; flex-shrink: 0; }
+
+.panel-empty {
+  padding: 48px 22px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-hint);
+}
+
+.panel-cancel {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-top: 1px solid #EEF7FC;
+  background: none;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-hint);
+  cursor: pointer;
+  min-height: 52px;
+  transition: color 0.15s;
+}
+
+.panel-cancel:hover { color: var(--text-light); }
+
+/* Log items */
+.log-item {
+  padding: 13px 22px;
+  border-bottom: 1px solid #EEF7FC;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+}
+
+.log-item:last-child { border-bottom: none; }
+
+.log-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.log-dot.fp       { background: var(--green); }
+.log-dot.override { background: var(--orange); }
+
+.log-name { font-size: 14px; font-weight: 800; color: var(--text); }
+.log-meal { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
+.log-time { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-hint); white-space: nowrap; }
+
+/* ======== BOTTOM BAR ======== */
+.bottombar {
+  flex-shrink: 0;
+  padding: 10px 20px 28px;
+  display: flex;
+  gap: 10px;
+}
+
+.btn-bar {
+  flex: 1;
+  padding: 15px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--blue-mid);
+  background: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s;
+  position: relative;
+  min-height: 52px;
+}
+
+.btn-bar:hover  { background: var(--blue-light); border-color: var(--blue); }
+.btn-bar:active { transform: scale(0.97); }
+
+.btn-bar.highlighted {
+  border-color: var(--red);
+  background: var(--red-bg);
+  color: var(--red);
+  animation: wiggle 0.4s ease;
+}
+
+@keyframes wiggle {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  75%      { transform: translateX(5px); }
+}
+
+.log-badge {
+  position: absolute;
+  top: -8px; right: -8px;
+  background: var(--blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  padding: 0 5px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
+
+/* ======== DEV PANEL (hidden) ======== */
+/* Skryté demo tlačítko — dlouhý stisk loga (pro testování bez čtečky) */
+.dev-panel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+}
+
+.dev-panel.open { display: flex; }
+
+.dev-box {
+  background: white;
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dev-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.dev-btn {
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--blue-mid);
+  background: var(--blue-light);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  cursor: pointer;
+  text-align: left;
+  min-height: 52px;
+}
+
+.dev-btn:active { transform: scale(0.98); }
+
+.dev-close {
+  padding: 14px;
+  border: none;
+  background: none;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-hint);
+  cursor: pointer;
+  border-top: 1px solid #EEF7FC;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-row">
+      <div class="logo-area">
+        <div class="logo-circle" id="logo-btn">
+          <svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="13" cy="13" r="10" fill="white" opacity="0.9"/>
+            <path d="M9 8.5L9 12.5Q9 15 11.5 15L11.5 19" stroke="#E6B020" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <path d="M10.8 8.5L10.8 12.5" stroke="#E6B020" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+            <path d="M16 8.5Q18.5 10.5 17.5 14L17.5 19" stroke="#E6B020" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <path d="M11.8 11.5Q13 10.2 14.2 11.5Q13 12.8 11.8 11.5Z" fill="#E05050"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">Velamenu</div>
+          <div class="location-tag">Dědina</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-clock" id="clock">--:--</div>
+        <div class="header-date"  id="datum"></div>
+      </div>
+    </div>
+  </div>
+  <div class="wave">
+    <svg viewBox="0 0 540 44" preserveAspectRatio="none">
+      <path d="M0,0 C60,36 120,48 200,34 C280,20 310,6 380,12 C440,17 490,34 540,28 L540,0 Z" fill="#1AABDC"/>
+    </svg>
+  </div>
+
+  <!-- STAGE -->
+  <div class="stage">
+
+    <!-- IDLE -->
+    <div class="view active" id="view-idle">
+      <div class="idle-main">
+        <div class="fp-outer">
+          <div class="fp-inner">
+            <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 6C14.6 6 7 13.6 7 23"/>
+              <path d="M24 6C33.4 6 41 13.6 41 23"/>
+              <path d="M11 36C8.3 32.2 7 27.8 7 23c0-9.4 7.6-17 17-17"/>
+              <path d="M37 36c2.7-3.8 4-8.2 4-13 0-9.4-7.6-17-17-17"/>
+              <path d="M24 15c-4.4 0-8 3.6-8 8 0 3.2 1.6 6.1 4 7.9"/>
+              <path d="M24 15c4.4 0 8 3.6 8 8 0 3.2-1.6 6.1-4 7.9"/>
+              <path d="M24 21.5c-0.8 0-1.5.7-1.5 1.5 0 .7.4 1.3 1 1.7"/>
+              <path d="M24 21.5c.8 0 1.5.7 1.5 1.5 0 .7-.4 1.3-1 1.7"/>
+              <circle cx="24" cy="23" r="1.5" fill="#1AABDC" stroke="none"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="idle-headline">Přilož prst ke čtečce</div>
+        <div class="idle-sub">a my se postaráme o zbytek 🍽️</div>
+
+        <div class="idle-infobox">
+          <div class="idle-infobox-day" id="idle-day">—</div>
+          <div class="idle-infobox-hours">Výdej obědů 11:30 – 13:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="view" id="view-result">
+      <div class="result-card" id="result-card">
+        <div class="result-icon"  id="r-icon"></div>
+        <div class="result-badge" id="r-badge"></div>
+        <div class="result-name"  id="r-name"></div>
+        <div class="result-meal"  id="r-meal"></div>
+        <div class="result-meta"  id="r-meta"></div>
+        <div class="result-hint">Zavolej obsluhu nebo použij<br><strong>tlačítko Ruční výběr</strong> dole ↓</div>
+        <div class="btn-zpet"><button onclick="goIdle()">← Zpět</button></div>
+      </div>
+
+      <div class="progress-wrap" id="progress-wrap" style="display:none;">
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-label" id="progress-label"></div>
+      </div>
+    </div>
+
+    <!-- OVERRIDE -->
+    <div class="view view-panel" id="view-override">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ruční výběr dítěte</div>
+          <input class="panel-search" type="text" placeholder="Hledat jméno…"
+                 id="override-input" oninput="filterKids(this.value)">
+        </div>
+        <div class="panel-list" id="override-list"></div>
+        <button class="panel-cancel" onclick="goIdle()">Zrušit</button>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="view view-panel" id="view-log">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-row">
+            <div class="panel-title">Dnešní výdej</div>
+            <div class="log-count-pill" id="log-pill">0 vydáno</div>
+          </div>
+        </div>
+        <div class="panel-list" id="log-list"></div>
+        <button class="panel-cancel" onclick="goIdle()">Zavřít</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <button class="btn-bar" id="btn-override" onclick="goOverride()">
+      ☰ Ruční výběr
+    </button>
+    <button class="btn-bar" id="btn-log" onclick="goLog()">
+      📋 Výdej dnes
+      <span class="log-badge" id="log-badge"></span>
+    </button>
+  </div>
+
+</div>
+
+<!-- DEV PANEL (přístup: podržet logo 2s) -->
+<div class="dev-panel" id="dev-panel">
+  <div class="dev-box">
+    <div class="dev-title">Simulace čtečky — jen pro testování</div>
+    <button class="dev-btn" onclick="devSim('adam');closedev()">👆 Adam Novák — nové jídlo</button>
+    <button class="dev-btn" onclick="devSim('jana');closedev()">👆 Jana Svobodová — nové jídlo</button>
+    <button class="dev-btn" onclick="devSim('vydano');closedev()">👆 Tomáš Krejčí — již vydáno</button>
+    <button class="dev-btn" onclick="devSim('neznamy');closedev()">👆 Neznámý otisk</button>
+    <button class="dev-close" onclick="closedev()">Zavřít</button>
+  </div>
+</div>
+
+<script>
+// ======================================================
+// DATA
+// ======================================================
+// TODO: Nahradit reálným denním exportem z Make/Bubble
+const deti = [
+  { uuid:"a3f9c21b", jmeno:"Adam Novák",       jidlo:"Svíčková na smetaně" },
+  { uuid:"99d4e12f", jmeno:"Jana Svobodová",    jidlo:"Kuřecí řízek s bramborovou kaší" },
+  { uuid:"b7e1a55c", jmeno:"Tomáš Krejčí",     jidlo:"Čočka na kyselo s vejcem" },
+  { uuid:"c2d8f034", jmeno:"Eliška Marková",   jidlo:"Svíčková na smetaně" },
+  { uuid:"e91b3a77", jmeno:"Jakub Dvořák",     jidlo:"Zeleninová polévka a salát" },
+  { uuid:"f44c2b19", jmeno:"Lucie Horáková",   jidlo:"Kuřecí řízek s bramborovou kaší" },
+  { uuid:"a11b2c3d", jmeno:"Martin Procházka", jidlo:"Svíčková na smetaně" },
+  { uuid:"d9e8f7a6", jmeno:"Tereza Nováková",  jidlo:"Čočka na kyselo s vejcem" },
+];
+
+// UUID → jméno mapování (bude naplněno z 2N čtečky)
+// Formát: { "uuid_z_ctechy": "uuid_v_deti_poli" }
+const uuidMap = {
+  "a3f9c21b": "a3f9c21b",
+  "99d4e12f": "99d4e12f",
+  "b7e1a55c": "b7e1a55c",
+};
+
+const vydano  = new Set();
+const log     = [];
+let autoTimer     = null;
+let countdownInt  = null;
+
+// ======================================================
+// HODINY
+// ======================================================
+function tick() {
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    n.toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+  document.getElementById("datum").textContent =
+    n.toLocaleDateString("cs-CZ",{ weekday:"short", day:"numeric", month:"numeric" });
+
+  const days   = ["Neděle","Pondělí","Úterý","Středa","Čtvrtek","Pátek","Sobota"];
+  const months = ["ledna","února","března","dubna","května","června","července",
+                  "srpna","září","října","listopadu","prosince"];
+  document.getElementById("idle-day").textContent =
+    days[n.getDay()] + " " + n.getDate() + ". " + months[n.getMonth()] + " " + n.getFullYear();
+}
+tick(); setInterval(tick, 1000);
+
+// ======================================================
+// VIEW ENGINE
+// ======================================================
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+}
+
+function goIdle() {
+  clearAuto();
+  hideProgress();
+  document.getElementById("btn-override").classList.remove("highlighted");
+  showView("idle");
+}
+
+function goOverride() {
+  clearAuto(); hideProgress();
+  document.getElementById("override-input").value = "";
+  renderOverride(deti);
+  showView("override");
+  setTimeout(() => document.getElementById("override-input").focus(), 80);
+}
+
+function goLog() {
+  clearAuto(); hideProgress();
+  renderLog();
+  showView("log");
+}
+
+// ======================================================
+// VÝSLEDEK
+// ======================================================
+function ukazVysledek(dite, typ) {
+  clearAuto();
+
+  const card = document.getElementById("result-card");
+  card.className = "result-card " + typ;
+
+  const cfg = {
+    ok:   { icon:"✅", badge:"Dobrou chuť!",       name: dite?.jmeno, meal: dite?.jidlo,               meta:"Dnes poprvé 🎉" },
+    warn: { icon:"⚠️", badge:"Pozor",               name: dite?.jmeno, meal:"Jídlo již bylo vydáno",    meta:"" },
+    err:  { icon:"❓", badge:"Neznámý uživatel",    name: "",          meal:"Zkus přiložit prst znovu", meta:"nebo zavolej obsluhu" },
+  };
+
+  const c = cfg[typ];
+  document.getElementById("r-icon").textContent  = c.icon;
+  document.getElementById("r-badge").textContent = c.badge;
+  document.getElementById("r-name").textContent  = c.name || "";
+  document.getElementById("r-meal").textContent  = c.meal;
+  document.getElementById("r-meta").textContent  = c.meta;
+
+  if (typ === "warn" && dite) {
+    const z = log.find(l => l.uuid === dite.uuid);
+    if (z) document.getElementById("r-meta").textContent = "Vydáno dnes v " + z.cas;
+  }
+
+  document.getElementById("btn-override").classList.remove("highlighted");
+  if (typ === "err") {
+    setTimeout(() => document.getElementById("btn-override").classList.add("highlighted"), 500);
+  }
+
+  showView("result");
+
+  // Auto-reset s progress barem
+  if (typ === "ok" || typ === "warn") {
+    const dur = typ === "ok" ? 6000 : 8000;
+    startProgress(dur);
+    autoTimer = setTimeout(goIdle, dur);
+  }
+}
+
+// ======================================================
+// PROGRESS BAR
+// ======================================================
+function startProgress(ms) {
+  const wrap  = document.getElementById("progress-wrap");
+  const fill  = document.getElementById("progress-fill");
+  const label = document.getElementById("progress-label");
+
+  wrap.style.display = "block";
+  fill.style.transition = "none";
+  fill.style.width = "100%";
+
+  let secs = Math.round(ms / 1000);
+  label.textContent = "Automaticky zpět za " + secs + " s";
+
+  countdownInt = setInterval(() => {
+    secs--;
+    label.textContent = secs > 0 ? "Automaticky zpět za " + secs + " s" : "";
+  }, 1000);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.transition = "width " + (ms / 1000) + "s linear";
+    fill.style.width = "0%";
+  }));
+}
+
+function hideProgress() {
+  clearInterval(countdownInt);
+  document.getElementById("progress-wrap").style.display = "none";
+}
+
+function clearAuto() {
+  clearTimeout(autoTimer);
+  clearInterval(countdownInt);
+}
+
+// ======================================================
+// LOG
+// ======================================================
+function zaloguj(dite, override) {
+  const cas = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+  log.unshift({ uuid: dite.uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, cas, override });
+  const badge = document.getElementById("log-badge");
+  badge.textContent = log.length;
+  badge.style.display = "flex";
+}
+
+function renderLog() {
+  const list = document.getElementById("log-list");
+  document.getElementById("log-pill").textContent = log.length + " vydáno";
+  list.innerHTML = log.length === 0
+    ? '<div class="panel-empty">Dnes zatím nikdo 🙂</div>'
+    : log.map(i => `
+        <div class="log-item">
+          <div class="log-dot ${i.override ? 'override' : 'fp'}"></div>
+          <div style="flex:1;min-width:0;">
+            <div class="log-name">${i.jmeno}</div>
+            <div class="log-meal">${i.jidlo}${i.override
+              ? ' · <span style="color:var(--orange)">ručně</span>' : ''}</div>
+          </div>
+          <div class="log-time">${i.cas}</div>
+        </div>`).join("");
+}
+
+// ======================================================
+// OVERRIDE
+// ======================================================
+function filterKids(q) {
+  const f = q ? deti.filter(d => d.jmeno.toLowerCase().includes(q.toLowerCase())) : deti;
+  renderOverride(f);
+}
+
+function renderOverride(seznam) {
+  const list = document.getElementById("override-list");
+  list.innerHTML = seznam.length === 0
+    ? '<div class="panel-empty">Nikdo nenalezen</div>'
+    : seznam.map(d => `
+        <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
+          <div style="min-width:0;">
+            <div class="panel-item-name">${d.jmeno}</div>
+            <div class="panel-item-sub">${d.jidlo}</div>
+          </div>
+          <div class="panel-item-arrow">›</div>
+        </div>`).join("");
+}
+
+function overrideVydej(uuid) {
+  const dite = deti.find(d => d.uuid === uuid);
+  if (!dite) return;
+  zaloguj(dite, true);
+  vydano.add(uuid);
+  document.getElementById("btn-override").classList.remove("highlighted");
+  ukazVysledek(dite, "ok");
+  document.getElementById("r-badge").textContent = "Vydej jídlo – ručně";
+  document.getElementById("r-meta").textContent  = "Zadáno obsluhou";
+}
+
+// ======================================================
+// ČTEČKA — vstupní bod pro reálné 2N API
+// ======================================================
+// Tato funkce bude volána když čtečka vrátí UUID
+function onFingerprint(uuid) {
+  const mappedUuid = uuidMap[uuid] || uuid;
+  const dite = deti.find(d => d.uuid === mappedUuid);
+
+  if (!dite)              { ukazVysledek(null, "err");  return; }
+  if (vydano.has(uuid))   { ukazVysledek(dite, "warn"); return; }
+
+  zaloguj(dite, false);
+  vydano.add(uuid);
+  ukazVysledek(dite, "ok");
+}
+
+// ======================================================
+// DEV PANEL (podržet logo 2 sekundy)
+// ======================================================
+let logoTimer = null;
+
+document.getElementById("logo-btn").addEventListener("pointerdown", () => {
+  logoTimer = setTimeout(() => {
+    document.getElementById("dev-panel").classList.add("open");
+  }, 2000);
+});
+
+document.getElementById("logo-btn").addEventListener("pointerup",   () => clearTimeout(logoTimer));
+document.getElementById("logo-btn").addEventListener("pointerleave",() => clearTimeout(logoTimer));
+
+function closedev() { document.getElementById("dev-panel").classList.remove("open"); }
+
+const devMap = { adam:"a3f9c21b", jana:"99d4e12f", vydano:"b7e1a55c" };
+
+function devSim(scenario) {
+  const uuid = devMap[scenario] || "NEZNAMY_UUID";
+  onFingerprint(uuid);
+}
+
+// ======================================================
+// INIT
+// ======================================================
+showView("idle");
+</script>
+</body>
+</html>
