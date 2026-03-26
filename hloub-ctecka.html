@@ -370,6 +370,35 @@ body {
   color: var(--text-hint); cursor: pointer;
   border-top: 1px solid #EEF7FC; margin-top: 4px;
 }
+
+.location-tag { user-select: none; -webkit-user-select: none; }
+
+.group-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 16px;
+}
+.group-btn {
+  padding: 18px 8px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--blue-mid); background: var(--blue-light);
+  font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900;
+  color: var(--blue-dark); cursor: pointer; min-height: 60px;
+  transition: all 0.12s;
+}
+.group-btn:hover  { background: var(--blue-mid); }
+.group-btn:active { transform: scale(0.96); }
+.group-btn.adults { grid-column: 1 / -1; background: white; border-color: var(--blue); }
+
+.storno-item {
+  padding: 14px 18px; border-bottom: 1px solid #FDF0F0;
+  display: flex; align-items: center; gap: 10px;
+}
+.storno-btn {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
+  border: none; background: var(--red-bg); color: var(--red);
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  cursor: pointer; min-height: 40px;
+}
+.storno-btn:active { transform: scale(0.96); }
 </style>
 </head>
 <body>
@@ -395,7 +424,7 @@ body {
         </div>
         <div>
           <div class="logo-name">Velamenu</div>
-          <div class="location-tag">Hloubětín · Vstup</div>
+          <div class="location-tag" id="location-tag">Hloubětín · Vstup</div>
         </div>
       </div>
       <div class="header-right">
@@ -456,16 +485,15 @@ body {
       </div>
     </div>
 
-    <!-- OVERRIDE -->
+    <!-- OVERRIDE — 2-krokový výběr: skupiny → děti -->
     <div class="view" id="view-override">
       <div class="panel">
         <div class="panel-head">
-          <div class="panel-title">Ruční výběr dítěte</div>
-          <input class="panel-search" type="text" placeholder="Hledat jméno…"
-                 id="override-input" oninput="filterKids(this.value)">
+          <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
         </div>
-        <div class="panel-list" id="override-list"></div>
-        <button class="panel-cancel" onclick="goIdle()">Zrušit</button>
+        <div id="override-step-groups" class="panel-list"></div>
+        <div id="override-step-kids"   style="display:none;flex:1;overflow-y:auto;"></div>
+        <button class="panel-cancel" id="override-cancel-btn" onclick="goIdle()">Zrušit</button>
       </div>
     </div>
 
@@ -481,6 +509,15 @@ body {
     </button>
   </div>
 
+</div>
+
+<!-- ADMIN STORNO — long-press 3s na location-tag -->
+<div class="dev-panel" id="storno-panel">
+  <div class="dev-box">
+    <div class="dev-title" style="color:var(--red);">Storno výdeje</div>
+    <div id="storno-list"></div>
+    <button class="dev-close" onclick="closeStorno()">Zavřít</button>
+  </div>
 </div>
 
 <!-- DEV PANEL -->
@@ -522,6 +559,7 @@ let countdownInt   = null;
 let reconnectTimer = null;
 let pollingPaused  = false; // debounce — pauza po otisku dokud se nevrátí idle
 let pollInterval   = null;
+let stornoLog      = []; // záznamy vydaných pro admin storno panel
 
 // ======================================================
 // HODINY
@@ -582,16 +620,27 @@ function handleMessage(msg) {
   switch (msg.type) {
     case "init":
       deti = msg.deti || [];
+      // Obnov stornoLog z iniciálního logu ze serveru
+      stornoLog = (msg.log || []).map(l => ({ uuid: l.uuid, jmeno: l.jmeno, jidlo: l.jidlo, cas: l.cas, override: l.override }));
       break;
 
     case "result":
+      if (msg.status === "ok" && msg.dite) {
+        const cas = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+        stornoLog.unshift({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas, override: !!msg.override });
+      }
       ukazVysledek(msg);
+      break;
+
+    case "storno":
+      stornoLog = stornoLog.filter(i => i.uuid !== msg.uuid);
       break;
 
     case "pong":
       break;
 
     case "reset":
+      stornoLog = [];
       goIdle();
       break;
   }
@@ -658,10 +707,8 @@ function goIdle() {
 
 function goOverride() {
   clearAuto();
-  renderOverride(deti);
-  document.getElementById("override-input").value = "";
+  showGroupStep();
   showView("override");
-  setTimeout(() => document.getElementById("override-input").focus(), 80);
 }
 
 // ======================================================
@@ -711,15 +758,43 @@ function ukazVysledek(msg) {
 function clearAuto() { clearTimeout(autoTimer); clearInterval(countdownInt); }
 
 // ======================================================
-// OVERRIDE
+// OVERRIDE — 2-krokový výběr: skupiny → děti
 // ======================================================
-function filterKids(q) {
-  renderOverride(q ? deti.filter(d => d.jmeno.toLowerCase().includes(q.toLowerCase())) : deti);
+function showGroupStep() {
+  document.getElementById("override-title").textContent = "Ruční výběr dítěte";
+  document.getElementById("override-cancel-btn").textContent = "Zrušit";
+  document.getElementById("override-cancel-btn").onclick = goIdle;
+
+  const groups = [...new Set(deti.map(d => d.trida || "—"))].sort((a, b) => {
+    if (a === "Dospělí") return 1;
+    if (b === "Dospělí") return -1;
+    return a.localeCompare(b, "cs");
+  });
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  kids.style.display  = "none";
+  step.style.display  = "block";
+
+  step.innerHTML = `<div class="group-grid">
+    ${groups.map(g => `
+      <button class="group-btn${g === "Dospělí" ? " adults" : ""}" onclick="showKidsStep('${g}')">${g}</button>
+    `).join("")}
+  </div>`;
 }
 
-function renderOverride(seznam) {
-  const list = document.getElementById("override-list");
-  list.innerHTML = seznam.length === 0
+function showKidsStep(trida) {
+  document.getElementById("override-title").textContent = trida;
+  document.getElementById("override-cancel-btn").textContent = "← Skupiny";
+  document.getElementById("override-cancel-btn").onclick = showGroupStep;
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  step.style.display = "none";
+  kids.style.display = "block";
+
+  const seznam = deti.filter(d => (d.trida || "—") === trida);
+  kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
@@ -734,6 +809,46 @@ function renderOverride(seznam) {
 function overrideVydej(uuid) {
   wsSend({ type: "override", uuid });
   goIdle();
+}
+
+// ======================================================
+// ADMIN STORNO — long-press 3s na location-tag
+// ======================================================
+let stornoTimer = null;
+
+document.getElementById("location-tag").addEventListener("pointerdown", () => {
+  stornoTimer = setTimeout(openStorno, 3000);
+});
+document.getElementById("location-tag").addEventListener("pointerup",    () => clearTimeout(stornoTimer));
+document.getElementById("location-tag").addEventListener("pointerleave", () => clearTimeout(stornoTimer));
+
+function openStorno() {
+  // Načte dnešní log ze serveru — zobrazíme to, co víme ze zpráv "result"
+  // logItems se plní při každém "result:ok" přijatém od serveru
+  const list = document.getElementById("storno-list");
+  if (stornoLog.length === 0) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-hint);font-weight:700;">Dnes ještě nikdo nevydán.</div>';
+  } else {
+    list.innerHTML = stornoLog.map(i => `
+      <div class="storno-item">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:800;color:var(--text);">${i.jmeno}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);">${i.jidlo} · ${i.cas || ""}${i.override ? ' · ručně' : ''}</div>
+        </div>
+        <button class="storno-btn" onclick="doStorno('${i.uuid}')">Storno</button>
+      </div>`).join("");
+  }
+  document.getElementById("storno-panel").classList.add("open");
+}
+
+function closeStorno() {
+  document.getElementById("storno-panel").classList.remove("open");
+}
+
+function doStorno(uuid) {
+  wsSend({ type: "storno", uuid });
+  stornoLog = stornoLog.filter(i => i.uuid !== uuid);
+  closeStorno();
 }
 
 // ======================================================

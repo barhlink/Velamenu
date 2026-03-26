@@ -146,6 +146,10 @@ wss.on("connection", (ws, req) => {
       case "override":
         handleOverride(ws, msg.uuid);
         break;
+      case "storno":
+        handleStorno(msg.uuid);
+        break;
+
       case "ping":
         send(ws, { type: "pong" });
         break;
@@ -195,6 +199,16 @@ function handleOverride(ws, uuid) {
 
   send(ws, { type: "result", status: "ok", dite, override: true });
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+}
+
+function handleStorno(uuid) {
+  vydano.delete(uuid);
+  const idx = log.findIndex(l => l.uuid === uuid);
+  const jmeno = idx !== -1 ? log[idx].jmeno : uuid;
+  if (idx !== -1) log.splice(idx, 1);
+  console.log(`[${cas()}] Storno: ${jmeno}`);
+  // Informovat všechny klienty (ctecka i vydej)
+  broadcast({ type: "storno", uuid }, null);
 }
 
 function zaloguj(dite, override, uuid) {

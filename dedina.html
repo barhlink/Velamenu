@@ -99,6 +99,17 @@ body {
 
 .header-right { text-align: right; }
 
+.conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; margin-right: 5px;
+  background: rgba(255,255,255,0.3); transition: background 0.3s;
+}
+.conn-dot.online  { background: #4CB87A; }
+.conn-dot.offline { background: var(--orange); }
+.conn-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5); }
+
+.location-tag { user-select: none; -webkit-user-select: none; }
+
 .header-clock {
   font-size: 22px;
   font-weight: 700;
@@ -609,6 +620,33 @@ body {
 
 .dev-btn:active { transform: scale(0.98); }
 
+.group-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 16px;
+}
+.group-btn {
+  padding: 18px 8px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--blue-mid); background: var(--blue-light);
+  font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900;
+  color: var(--blue-dark); cursor: pointer; min-height: 60px;
+  transition: all 0.12s;
+}
+.group-btn:hover  { background: var(--blue-mid); }
+.group-btn:active { transform: scale(0.96); }
+.group-btn.adults { grid-column: 1 / -1; background: white; border-color: var(--blue); }
+
+.storno-item {
+  padding: 14px 18px; border-bottom: 1px solid #FDF0F0;
+  display: flex; align-items: center; gap: 10px;
+}
+.storno-btn {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
+  border: none; background: var(--red-bg); color: var(--red);
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  cursor: pointer; min-height: 40px;
+}
+.storno-btn:active { transform: scale(0.96); }
+
 .dev-close {
   padding: 14px;
   border: none;
@@ -626,6 +664,11 @@ body {
 <body>
 <div class="app">
 
+  <!-- OFFLINE BANNER -->
+  <div style="background:var(--orange);color:white;font-size:12px;font-weight:800;text-align:center;padding:8px;display:none;" id="offline-banner">
+    ⚠️ Odpojeno od serveru — pokus o připojení…
+  </div>
+
   <!-- HEADER -->
   <div class="header">
     <div class="header-row">
@@ -641,10 +684,14 @@ body {
         </div>
         <div>
           <div class="logo-name">Velamenu</div>
-          <div class="location-tag">Dědina</div>
+          <div class="location-tag" id="location-tag">Dědina</div>
         </div>
       </div>
       <div class="header-right">
+        <div style="margin-bottom:4px;text-align:right;">
+          <span class="conn-dot" id="conn-dot"></span>
+          <span class="conn-label" id="conn-label">připojování…</span>
+        </div>
         <div class="header-clock" id="clock">--:--</div>
         <div class="header-date"  id="datum"></div>
       </div>
@@ -708,16 +755,15 @@ body {
       </div>
     </div>
 
-    <!-- OVERRIDE -->
+    <!-- OVERRIDE — 2-krokový výběr: skupiny → děti -->
     <div class="view view-panel" id="view-override">
       <div class="panel">
         <div class="panel-head">
-          <div class="panel-title">Ruční výběr dítěte</div>
-          <input class="panel-search" type="text" placeholder="Hledat jméno…"
-                 id="override-input" oninput="filterKids(this.value)">
+          <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
         </div>
-        <div class="panel-list" id="override-list"></div>
-        <button class="panel-cancel" onclick="goIdle()">Zrušit</button>
+        <div id="override-step-groups" class="panel-list"></div>
+        <div id="override-step-kids"   style="display:none;flex:1;overflow-y:auto;"></div>
+        <button class="panel-cancel" id="override-cancel-btn" onclick="goIdle()">Zrušit</button>
       </div>
     </div>
 
@@ -750,11 +796,13 @@ body {
 
 </div>
 
-<!-- LOADING OVERLAY — zobrazí se při startu než se načtou data -->
-<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:'Nunito',sans-serif;">
-  <div style="font-size:18px;font-weight:700;color:var(--text);">Načítám data…</div>
-  <div id="loading-msg" style="font-size:14px;font-weight:600;color:var(--text-light);text-align:center;padding:0 32px;"></div>
-  <button id="loading-retry" onclick="loadData()" style="display:none;padding:14px 28px;background:var(--blue);color:white;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">Zkusit znovu</button>
+<!-- ADMIN STORNO — long-press 3s na location-tag -->
+<div class="dev-panel" id="storno-panel">
+  <div class="dev-box">
+    <div class="dev-title" style="color:var(--red);">Storno výdeje</div>
+    <div id="storno-list"></div>
+    <button class="dev-close" onclick="closeStorno()">Zavřít</button>
+  </div>
 </div>
 
 <!-- DEV PANEL (přístup: podržet logo 2s) -->
@@ -771,31 +819,35 @@ body {
 
 <script>
 // ======================================================
-// KONFIGURACE — nastav IP čtečky a cesty k souborům
+// KONFIGURACE
 // ======================================================
-const CFG = {
-  twonIp:      "192.168.1.50",       // ← IP adresa 2N čtečky v síti školy
-  twonUser:    "admin",               // ← přihlašovací jméno 2N HTTP API
-  twonPass:    "admin",               // ← heslo 2N HTTP API
-  exportUrl:   "data/export.json",    // denní export z Make: [{ uuid, jmeno, jidlo }]
-  uuidmapUrl:  "data/uuidmap.json",   // mapování 2N ID → Bubble UUID: { "hex8": "uuid" }
-  twonEnabled: true,                  // false → vypne polling (testování bez čtečky)
-  fieldName:   "cardOrCode",          // pole v 2N event objektu s ID otisku
+const SERVER_IP   = "192.168.1.100"; // ← IP adresy serveru (Raspberry Pi / PC)
+const SERVER_PORT = 3000;
+const WS_URL      = `ws://${SERVER_IP}:${SERVER_PORT}`;
+
+// Konfigurace 2N polling (přímý fetch k čtečce)
+// Vyžaduje kiosk mode (--disable-web-security) nebo CORS na 2N
+const CFG_2N = {
+  enabled:   true,           // false → vypne polling (dev bez čtečky)
+  twonIp:    "192.168.1.50", // ← IP adresa 2N čtečky
+  twonUser:  "admin",        // ← přihlašovací jméno
+  twonPass:  "admin",        // ← heslo
+  fieldName: "cardOrCode",   // pole v 2N event objektu s ID otisku
+  lastId:    0,
 };
 
 // ======================================================
-// DATA — načítá se z JSON souborů (viz loadData níže)
+// STAV
 // ======================================================
-let deti    = [];
-let uuidMap = {};
-
-const vydano  = new Set();
-const log     = [];
-let autoTimer    = null;
-let countdownInt = null;
+let deti          = [];
+let ws            = null;
+let reconnectTimer = null;
+let autoTimer     = null;
+let countdownInt  = null;
 let pollingPaused = false; // debounce — pauza po otisku dokud se nevrátí idle
 let pollInterval  = null;
-let twon2nLastId  = 0;
+let stornoLog     = []; // záznamy vydaných pro admin storno panel
+let logItems      = []; // pro log view tab
 
 // ======================================================
 // HODINY
@@ -816,6 +868,82 @@ function tick() {
 tick(); setInterval(tick, 1000);
 
 // ======================================================
+// WEBSOCKET
+// ======================================================
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    setConn(true);
+    clearTimeout(reconnectTimer);
+    start2NPoll();
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+
+  ws.onclose = () => {
+    setConn(false);
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function setConn(online) {
+  const dot    = document.getElementById("conn-dot");
+  const label  = document.getElementById("conn-label");
+  const banner = document.getElementById("offline-banner");
+  dot.className     = "conn-dot " + (online ? "online" : "offline");
+  label.textContent = online ? "připojeno" : "offline";
+  banner.style.display = online ? "none" : "block";
+}
+
+function wsSend(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+// ======================================================
+// ZPRÁVY ZE SERVERU
+// ======================================================
+function handleMessage(msg) {
+  switch (msg.type) {
+    case "init":
+      deti      = msg.deti || [];
+      logItems  = (msg.log || []).slice(); // nejnovější první (server posílá unshift)
+      stornoLog = logItems.map(l => ({ uuid: l.uuid, jmeno: l.jmeno, jidlo: l.jidlo, cas: l.cas, override: l.override }));
+      updateLogBadge();
+      break;
+
+    case "result":
+      if (msg.status === "ok" && msg.dite) {
+        const cas = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+        const item = { uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas, override: !!msg.override };
+        logItems.unshift(item);
+        stornoLog.unshift(item);
+        updateLogBadge();
+      }
+      ukazVysledek(msg);
+      break;
+
+    case "storno":
+      logItems  = logItems.filter(i => i.uuid !== msg.uuid);
+      stornoLog = stornoLog.filter(i => i.uuid !== msg.uuid);
+      updateLogBadge();
+      break;
+
+    case "reset":
+      logItems  = [];
+      stornoLog = [];
+      updateLogBadge();
+      goIdle();
+      break;
+  }
+}
+
+// ======================================================
 // VIEW ENGINE
 // ======================================================
 function showView(name) {
@@ -833,10 +961,8 @@ function goIdle() {
 
 function goOverride() {
   clearAuto(); hideProgress();
-  document.getElementById("override-input").value = "";
-  renderOverride(deti);
+  showGroupStep();
   showView("override");
-  setTimeout(() => document.getElementById("override-input").focus(), 80);
 }
 
 function goLog() {
@@ -845,43 +971,45 @@ function goLog() {
   showView("log");
 }
 
+function updateLogBadge() {
+  const badge = document.getElementById("log-badge");
+  badge.textContent = logItems.length;
+  badge.style.display = logItems.length > 0 ? "flex" : "none";
+}
+
 // ======================================================
 // VÝSLEDEK
 // ======================================================
-function ukazVysledek(dite, typ) {
+function ukazVysledek(msg) {
   clearAuto();
+  const { status, dite, vydanoCas } = msg;
 
   const card = document.getElementById("result-card");
-  card.className = "result-card " + typ;
+  card.className = "result-card " + status;
 
   const cfg = {
-    ok:   { icon:"✅", badge:"Dobrou chuť!",       name: dite?.jmeno, meal: dite?.jidlo,               meta:"Dnes poprvé 🎉" },
-    warn: { icon:"⚠️", badge:"Pozor",               name: dite?.jmeno, meal:"Jídlo již bylo vydáno",    meta:"" },
-    err:  { icon:"❓", badge:"Neznámý uživatel",    name: "",          meal:"Zkus přiložit prst znovu", meta:"nebo zavolej obsluhu" },
+    ok:   { icon:"✅", badge: msg.override ? "Vydej jídlo – ručně" : "Dobrou chuť!", name: dite?.jmeno, meal: dite?.jidlo, meta: msg.override ? "Zadáno obsluhou" : "Dnes poprvé 🎉" },
+    warn: { icon:"⚠️", badge:"Pozor",               name: dite?.jmeno, meal:"Jídlo již bylo vydáno",    meta: vydanoCas ? "Vydáno dnes v " + vydanoCas : "" },
+    err:  { icon:"❓", badge:"Neznámý uživatel",    name: "",          meal:"Zkus přiložit prst znovu", meta:"nebo použij Ruční výběr" },
   };
 
-  const c = cfg[typ];
+  const c = cfg[status] || cfg.err;
   document.getElementById("r-icon").textContent  = c.icon;
   document.getElementById("r-badge").textContent = c.badge;
   document.getElementById("r-name").textContent  = c.name || "";
   document.getElementById("r-meal").textContent  = c.meal;
   document.getElementById("r-meta").textContent  = c.meta;
 
-  if (typ === "warn" && dite) {
-    const z = log.find(l => l.uuid === dite.uuid);
-    if (z) document.getElementById("r-meta").textContent = "Vydáno dnes v " + z.cas;
-  }
-
   document.getElementById("btn-override").classList.remove("highlighted");
-  if (typ === "err") {
+  if (status === "err") {
     setTimeout(() => document.getElementById("btn-override").classList.add("highlighted"), 500);
   }
 
   showView("result");
 
   // Auto-reset s progress barem
-  if (typ === "ok" || typ === "warn") {
-    const dur = typ === "ok" ? 6000 : 8000;
+  if (status === "ok" || status === "warn") {
+    const dur = status === "ok" ? 6000 : 8000;
     startProgress(dur);
     autoTimer = setTimeout(goIdle, dur);
   }
@@ -924,22 +1052,14 @@ function clearAuto() {
 }
 
 // ======================================================
-// LOG
+// LOG VIEW
 // ======================================================
-function zaloguj(dite, override) {
-  const cas = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
-  log.unshift({ uuid: dite.uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, cas, override });
-  const badge = document.getElementById("log-badge");
-  badge.textContent = log.length;
-  badge.style.display = "flex";
-}
-
 function renderLog() {
   const list = document.getElementById("log-list");
-  document.getElementById("log-pill").textContent = log.length + " vydáno";
-  list.innerHTML = log.length === 0
+  document.getElementById("log-pill").textContent = logItems.length + " vydáno";
+  list.innerHTML = logItems.length === 0
     ? '<div class="panel-empty">Dnes zatím nikdo 🙂</div>'
-    : log.map(i => `
+    : logItems.map(i => `
         <div class="log-item">
           <div class="log-dot ${i.override ? 'override' : 'fp'}"></div>
           <div style="flex:1;min-width:0;">
@@ -952,16 +1072,43 @@ function renderLog() {
 }
 
 // ======================================================
-// OVERRIDE
+// OVERRIDE — 2-krokový výběr: skupiny → děti
 // ======================================================
-function filterKids(q) {
-  const f = q ? deti.filter(d => d.jmeno.toLowerCase().includes(q.toLowerCase())) : deti;
-  renderOverride(f);
+function showGroupStep() {
+  document.getElementById("override-title").textContent = "Ruční výběr dítěte";
+  document.getElementById("override-cancel-btn").textContent = "Zrušit";
+  document.getElementById("override-cancel-btn").onclick = goIdle;
+
+  const groups = [...new Set(deti.map(d => d.trida || "—"))].sort((a, b) => {
+    if (a === "Dospělí") return 1;
+    if (b === "Dospělí") return -1;
+    return a.localeCompare(b, "cs");
+  });
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  kids.style.display  = "none";
+  step.style.display  = "block";
+
+  step.innerHTML = `<div class="group-grid">
+    ${groups.map(g => `
+      <button class="group-btn${g === "Dospělí" ? " adults" : ""}" onclick="showKidsStep('${g}')">${g}</button>
+    `).join("")}
+  </div>`;
 }
 
-function renderOverride(seznam) {
-  const list = document.getElementById("override-list");
-  list.innerHTML = seznam.length === 0
+function showKidsStep(trida) {
+  document.getElementById("override-title").textContent = trida;
+  document.getElementById("override-cancel-btn").textContent = "← Skupiny";
+  document.getElementById("override-cancel-btn").onclick = showGroupStep;
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  step.style.display = "none";
+  kids.style.display = "block";
+
+  const seznam = deti.filter(d => (d.trida || "—") === trida);
+  kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
@@ -974,61 +1121,20 @@ function renderOverride(seznam) {
 }
 
 function overrideVydej(uuid) {
-  const dite = deti.find(d => d.uuid === uuid);
-  if (!dite) return;
-  zaloguj(dite, true);
-  vydano.add(uuid);
-  document.getElementById("btn-override").classList.remove("highlighted");
-  ukazVysledek(dite, "ok");
-  document.getElementById("r-badge").textContent = "Vydej jídlo – ručně";
-  document.getElementById("r-meta").textContent  = "Zadáno obsluhou";
+  wsSend({ type: "override", uuid });
+  goIdle();
 }
 
 // ======================================================
-// ČTEČKA — vstupní bod z 2N API
+// FINGERPRINT — vstupní bod z 2N API
 // ======================================================
 function onFingerprint(uuid) {
   if (pollingPaused) return;
-  pollingPaused = true; // debounce — ignoruj další otisky dokud se nevrátí idle
-
-  const mappedUuid = uuidMap[uuid] || uuid;
-  const dite = deti.find(d => d.uuid === mappedUuid);
-
-  if (!dite)                    { ukazVysledek(null, "err");  return; }
-  if (vydano.has(mappedUuid))   { ukazVysledek(dite, "warn"); return; }
-
-  zaloguj(dite, false);
-  vydano.add(mappedUuid);
-  ukazVysledek(dite, "ok");
-}
-
-// ======================================================
-// NAČTENÍ DAT ZE SOUBORŮ (Make export + UUID mapa)
-// ======================================================
-async function loadData() {
-  const overlay   = document.getElementById("loading-overlay");
-  const msg       = document.getElementById("loading-msg");
-  const retryBtn  = document.getElementById("loading-retry");
-  overlay.style.display = "flex";
-  msg.textContent       = "";
-  retryBtn.style.display = "none";
-
-  try {
-    const [exportRes, uuidRes] = await Promise.all([
-      fetch(CFG.exportUrl),
-      fetch(CFG.uuidmapUrl),
-    ]);
-    if (!exportRes.ok)  throw new Error("export.json: HTTP " + exportRes.status);
-    if (!uuidRes.ok)    throw new Error("uuidmap.json: HTTP " + uuidRes.status);
-
-    deti    = await exportRes.json();
-    uuidMap = await uuidRes.json();
-
-    overlay.style.display = "none";
-    start2NPoll();
-  } catch (err) {
-    msg.textContent        = "Chyba: " + err.message;
-    retryBtn.style.display = "block";
+  pollingPaused = true;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    wsSend({ type: "fingerprint", uuid });
+  } else {
+    ukazVysledek({ status: "err" });
   }
 }
 
@@ -1037,28 +1143,65 @@ async function loadData() {
 // Vyžaduje kiosk mode (--disable-web-security) nebo CORS na 2N
 // ======================================================
 function start2NPoll() {
-  if (!CFG.twonEnabled) return;
+  if (!CFG_2N.enabled) return;
   clearInterval(pollInterval);
   pollInterval = setInterval(poll2N, 1000);
 }
 
 async function poll2N() {
-  const auth = "Basic " + btoa(CFG.twonUser + ":" + CFG.twonPass);
+  const auth = "Basic " + btoa(CFG_2N.twonUser + ":" + CFG_2N.twonPass);
   try {
     const res    = await fetch(
-      `http://${CFG.twonIp}/api/log/pull?id=${twon2nLastId}&count=100`,
+      `http://${CFG_2N.twonIp}/api/log/pull?id=${CFG_2N.lastId}&count=100`,
       { headers: { Authorization: auth } }
     );
     const data   = await res.json();
     const events = data?.data?.events || [];
     for (const ev of events) {
-      if (ev.id > twon2nLastId) twon2nLastId = ev.id;
-      const rawId = ev[CFG.fieldName];
+      if (ev.id > CFG_2N.lastId) CFG_2N.lastId = ev.id;
+      const rawId = ev[CFG_2N.fieldName];
       if (rawId) onFingerprint(String(rawId).toLowerCase());
     }
   } catch {
     // Tiché selhání — 2N dočasně nedostupná, zkusíme za vteřinu
   }
+}
+
+// ======================================================
+// ADMIN STORNO — long-press 3s na location-tag
+// ======================================================
+let stornoTimer = null;
+
+document.getElementById("location-tag").addEventListener("pointerdown", () => {
+  stornoTimer = setTimeout(openStorno, 3000);
+});
+document.getElementById("location-tag").addEventListener("pointerup",    () => clearTimeout(stornoTimer));
+document.getElementById("location-tag").addEventListener("pointerleave", () => clearTimeout(stornoTimer));
+
+function openStorno() {
+  const list = document.getElementById("storno-list");
+  if (stornoLog.length === 0) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-hint);font-weight:700;">Dnes ještě nikdo nevydán.</div>';
+  } else {
+    list.innerHTML = stornoLog.map(i => `
+      <div class="storno-item">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:800;color:var(--text);">${i.jmeno}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);">${i.jidlo} · ${i.cas || ""}${i.override ? ' · ručně' : ''}</div>
+        </div>
+        <button class="storno-btn" onclick="doStorno('${i.uuid}')">Storno</button>
+      </div>`).join("");
+  }
+  document.getElementById("storno-panel").classList.add("open");
+}
+
+function closeStorno() {
+  document.getElementById("storno-panel").classList.remove("open");
+}
+
+function doStorno(uuid) {
+  wsSend({ type: "storno", uuid });
+  closeStorno();
 }
 
 // ======================================================
@@ -1087,8 +1230,8 @@ function devSim(scenario) {
 // ======================================================
 // INIT
 // ======================================================
+connect();
 showView("idle");
-loadData();
 </script>
 </body>
 </html>
