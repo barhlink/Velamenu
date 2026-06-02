@@ -813,7 +813,7 @@ body {
 // ======================================================
 // KONFIGURACE
 // ======================================================
-const SERVER_IP   = "localhost"; // ← IP adresy serveru (Raspberry Pi / PC)
+const SERVER_IP   = window.location.hostname;
 const SERVER_PORT = 3000;
 const WS_URL      = `ws://${SERVER_IP}:${SERVER_PORT}`;
 
