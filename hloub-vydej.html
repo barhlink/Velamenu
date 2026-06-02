@@ -371,6 +371,50 @@ body {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
   color: var(--text-hint); cursor: pointer; min-height: 52px;
 }
+
+/* Tlačítko Výdej bez objednávky */
+.btn-bar.bez-obj {
+  background: var(--orange-bg); border-color: var(--orange);
+  color: var(--orange); display: none;
+}
+.btn-bar.bez-obj.active-mode { display: flex; }
+
+/* Gear ikona v headeru */
+.gear-btn {
+  background: rgba(255,255,255,0.15); border: none;
+  border-radius: 50%; width: 36px; height: 36px;
+  font-size: 18px; cursor: pointer; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.8);
+}
+.gear-btn:active { transform: scale(0.9); }
+
+/* Nastavení panel */
+.settings-panel { padding: 0; }
+.settings-row {
+  padding: 18px 22px; border-bottom: 1px solid #EEF7FC;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.settings-row:last-of-type { border-bottom: none; }
+.settings-label { font-size: 15px; font-weight: 700; color: var(--text); }
+.settings-sub   { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 3px; }
+
+/* Toggle přepínač */
+.toggle { position: relative; width: 52px; height: 28px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; border-radius: 28px;
+  background: #D0E8F5; cursor: pointer; transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: ""; position: absolute;
+  left: 3px; top: 3px; width: 22px; height: 22px;
+  border-radius: 50%; background: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--orange); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(24px); }
 </style>
 </head>
 <body>
@@ -407,6 +451,7 @@ body {
           <div class="header-clock" id="clock">--:--</div>
           <div class="header-date"  id="datum"></div>
         </div>
+        <button class="gear-btn" onclick="openSettings()" title="Nastavení">⚙️</button>
       </div>
     </div>
   </div>
@@ -457,6 +502,7 @@ body {
 
   <!-- BOTTOM BAR -->
   <div class="bottombar">
+    <button class="btn-bar bez-obj" id="btn-bez-obj" onclick="openBezObj()">⚡ Bez objednávky</button>
     <button class="btn-bar" onclick="openOverride()">☰ Ruční výběr</button>
   </div>
 
@@ -475,6 +521,42 @@ body {
     <!-- Krok 2: výběr dítěte ve skupině -->
     <div id="override-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
     <button class="panel-cancel" id="override-cancel-btn" onclick="closeOverride()">Zrušit</button>
+  </div>
+</div>
+
+<!-- NASTAVENÍ OVERLAY -->
+<div class="overlay" id="settings-overlay">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Nastavení výdeje</div>
+    </div>
+    <div class="settings-panel">
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Výdej bez objednávky</div>
+          <div class="settings-sub">Zobrazí rychlé tlačítko pro ruční výdej dítěti bez objednávky</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-bez-obj" onchange="toggleBezObj(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <button class="panel-cancel" onclick="closeSettings()">Zavřít</button>
+  </div>
+</div>
+
+<!-- BEZ OBJEDNÁVKY OVERLAY — 2-krokový výběr skupiny → dítě -->
+<div class="overlay" id="bez-obj-overlay">
+  <div class="panel">
+    <div class="panel-head" style="background: var(--orange);">
+      <div class="panel-title" id="bez-obj-title">Výdej bez objednávky</div>
+    </div>
+    <div id="bez-obj-step-groups" class="panel-list">
+      <div class="panel-empty">Načítám skupiny…</div>
+    </div>
+    <div id="bez-obj-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
+    <button class="panel-cancel" id="bez-obj-cancel-btn" onclick="closeBezObj()">Zrušit</button>
   </div>
 </div>
 
@@ -775,6 +857,84 @@ function closeStorno() {
 function doStorno(uuid) {
   wsSend({ type: "storno", uuid });
   closeStorno();
+}
+
+// ======================================================
+// NASTAVENÍ
+// ======================================================
+function openSettings() {
+  document.getElementById("settings-overlay").classList.add("open");
+}
+
+function closeSettings() {
+  document.getElementById("settings-overlay").classList.remove("open");
+}
+
+function toggleBezObj(enabled) {
+  document.getElementById("btn-bez-obj").classList.toggle("active-mode", enabled);
+}
+
+// ======================================================
+// VÝDEJ BEZ OBJEDNÁVKY — 2-krokový výběr skupiny → dítě
+// ======================================================
+function openBezObj() {
+  document.getElementById("bez-obj-overlay").classList.add("open");
+  showBezObjGroups();
+}
+
+function closeBezObj() {
+  document.getElementById("bez-obj-overlay").classList.remove("open");
+}
+
+function showBezObjGroups() {
+  document.getElementById("bez-obj-title").textContent = "Výdej bez objednávky";
+  document.getElementById("bez-obj-cancel-btn").textContent = "Zrušit";
+  document.getElementById("bez-obj-cancel-btn").onclick = closeBezObj;
+
+  const groups = [...new Set(deti.map(d => d.trida || "—"))].sort((a, b) => {
+    if (a === "Dospělí") return 1;
+    if (b === "Dospělí") return -1;
+    return a.localeCompare(b, "cs");
+  });
+
+  const step = document.getElementById("bez-obj-step-groups");
+  const kids = document.getElementById("bez-obj-step-kids");
+  kids.style.display = "none";
+  step.style.display = "block";
+
+  step.innerHTML = `<div class="group-grid">
+    ${groups.map(g => `
+      <button class="group-btn${g === "Dospělí" ? " adults" : ""}" onclick="showBezObjKids('${g}')">${g}</button>
+    `).join("")}
+  </div>`;
+}
+
+function showBezObjKids(trida) {
+  document.getElementById("bez-obj-title").textContent = trida;
+  document.getElementById("bez-obj-cancel-btn").textContent = "← Skupiny";
+  document.getElementById("bez-obj-cancel-btn").onclick = showBezObjGroups;
+
+  const step = document.getElementById("bez-obj-step-groups");
+  const kids = document.getElementById("bez-obj-step-kids");
+  step.style.display = "none";
+  kids.style.display = "block";
+
+  const seznam = deti.filter(d => (d.trida || "—") === trida);
+  kids.innerHTML = seznam.length === 0
+    ? '<div class="panel-empty">Nikdo nenalezen</div>'
+    : seznam.map(d => `
+        <div class="panel-item" onclick="bezObjVydej('${d.uuid}')">
+          <div style="min-width:0;">
+            <div class="panel-item-name">${d.jmeno}</div>
+            <div class="panel-item-sub">${d.jidlo}</div>
+          </div>
+          <div class="panel-item-arrow" style="color:var(--orange);">›</div>
+        </div>`).join("");
+}
+
+function bezObjVydej(uuid) {
+  wsSend({ type: "override", uuid });
+  closeBezObj();
 }
 
 // ======================================================

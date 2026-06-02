@@ -118,6 +118,24 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Statické soubory — servíruj jen z kořene projektu (HTML, PNG, JS, CSS)
+  const ALLOWED_EXT = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+  const reqPath = parsed.pathname;
+  const ext = path.extname(reqPath).toLowerCase();
+  if (ALLOWED_EXT[ext]) {
+    // Ochrana před path traversal: pouze soubory přímo v kořeni projektu
+    const safeName = path.basename(reqPath);
+    const filePath = path.join(__dirname, safeName);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      res.writeHead(200, { "Content-Type": ALLOWED_EXT[ext] });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
+    return;
+  }
+
   // Default — stavová stránka
   res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
   res.end("Velamenu server běží. Vydáno dnes: " + log.length);
