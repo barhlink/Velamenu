@@ -30,7 +30,7 @@ const PORT = 3000;
 // ======================================================
 const CFG = {
   twonIp:    "192.168.1.227",  // ← IP adresa 2N čtečky v síti školy
-  twonToken: "admin",          // ← Bearer token (nebo heslo) pro 2N HTTP API
+  twonToken: "3tchR+/tFUe3ch/SxZ4bkpzkKg/+XfDRwy2pwhoZdgNfWgpK",          // ← Bearer token (nebo heslo) pro 2N HTTP API
 };
 
 // ======================================================
