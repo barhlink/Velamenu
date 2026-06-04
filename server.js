@@ -17,6 +17,7 @@
 
 const WebSocket = require("ws");
 const http      = require("http");
+const https     = require("https");
 const fs        = require("fs");
 const path      = require("path");
 const url       = require("url");
@@ -28,9 +29,8 @@ const PORT = 3000;
 // Změň IP, uživatele a heslo podle svého nastavení
 // ======================================================
 const CFG = {
-  twonIp:   "192.168.1.227",  // ← IP adresa 2N čtečky v síti školy
-  twonUser: "admin",          // ← přihlašovací jméno 2N HTTP API
-  twonPass: "admin",          // ← heslo 2N HTTP API
+  twonIp:    "192.168.1.227",  // ← IP adresa 2N čtečky v síti školy
+  twonToken: "admin",          // ← Bearer token (nebo heslo) pro 2N HTTP API
 };
 
 // ======================================================
@@ -80,18 +80,19 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // GET /api/2n-poll?id=N — proxy k 2N Access Unit (vyhne se CORS)
+  // GET /api/2n-poll?id=N — proxy k 2N Access Unit přes HTTPS (vyhne se CORS)
   if (parsed.pathname === "/api/2n-poll") {
     const lastId = parseInt(parsed.query.id || "0", 10);
-    const auth   = "Basic " + Buffer.from(`${CFG.twonUser}:${CFG.twonPass}`).toString("base64");
     const opts   = {
-      hostname: CFG.twonIp,
-      path:     `/api/log/pull?id=${lastId}&count=100`,
-      headers:  { Authorization: auth },
-      timeout:  2000,
+      hostname:           CFG.twonIp,
+      port:               443,
+      path:               `/api/log/pull?id=${lastId}&count=100`,
+      headers:            { Authorization: `Bearer ${CFG.twonToken}` },
+      timeout:            2000,
+      rejectUnauthorized: false,  // 2N používá self-signed certifikát
     };
 
-    const proxy = http.get(opts, (r) => {
+    const proxy = https.get(opts, (r) => {
       let body = "";
       r.on("data", c => body += c);
       r.on("end", () => {
@@ -107,7 +108,8 @@ const httpServer = http.createServer((req, res) => {
       });
     });
 
-    proxy.on("error", () => {
+    proxy.on("error", (err) => {
+      console.error(`[${cas()}] 2N proxy chyba:`, err.message);
       if (!res.headersSent) {
         res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify({ events: [] }));
