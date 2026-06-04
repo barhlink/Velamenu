@@ -120,6 +120,20 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // 2N Automation push — přijme User ID při otisku prstu
+  if (parsed.pathname === "/fingerprint") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", () => {
+      const userId = body.trim();
+      console.log(`[${cas()}] 2N otisk: userId=${userId}`);
+      handleFingerprint(null, userId);
+    });
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("ok");
+    return;
+  }
+
   // Statické soubory
   const filePath = path.join(__dirname, parsed.pathname);
   if (parsed.pathname !== '/' && fs.existsSync(filePath)) {
@@ -234,7 +248,7 @@ function zaloguj(dite, override, uuid) {
 // POMOCNÉ FUNKCE
 // ======================================================
 function send(ws, obj) {
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
 }
 
 function broadcast(obj, exclude) {
