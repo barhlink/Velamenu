@@ -163,13 +163,17 @@ wss.on("connection", (ws, req) => {
 function handleFingerprint(ws, uuid) {
   const jmeno = uuidMap[uuid];
   if (!jmeno) {
+    console.log(`[${cas()}] Neznámý userId: ${uuid}`);
     send(ws, { type: "result", status: "err", uuid });
+    broadcast({ type: "result", status: "err", info: "neznamy_uzivatel" }, ws);
     return;
   }
 
   const dite = deti.find(d => d.jmeno === jmeno);
   if (!dite) {
+    console.log(`[${cas()}] Nemá objednávku: ${jmeno}`);
     send(ws, { type: "result", status: "err", uuid });
+    broadcast({ type: "result", status: "err", info: "nema_objednavku", jmeno }, ws);
     return;
   }
 
