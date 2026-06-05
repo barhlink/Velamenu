@@ -519,15 +519,16 @@ body {
 
 </div>
 
-<!-- OVERRIDE OVERLAY — sekce podle stupně + vyhledávání -->
+<!-- OVERRIDE OVERLAY — krok 1: sekce, krok 2: děti ve skupině -->
 <div class="overlay" id="override-overlay">
   <div class="panel">
     <div class="panel-head">
-      <div class="panel-title">Ruční výběr dítěte</div>
-      <input class="panel-search" id="override-search" type="text" placeholder="Hledat jméno…" oninput="renderOverrideList(this.value)">
+      <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
+      <input class="panel-search" id="override-search" type="text" placeholder="Hledat jméno…" oninput="overrideSearch(this.value)" style="display:none;">
     </div>
-    <div class="panel-list" id="override-list"></div>
-    <button class="panel-cancel" onclick="closeOverride()">Zrušit</button>
+    <div id="override-step-groups" class="panel-list"></div>
+    <div id="override-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
+    <button class="panel-cancel" id="override-cancel-btn" onclick="closeOverride()">Zrušit</button>
   </div>
 </div>
 
@@ -774,60 +775,79 @@ function updateStats() {
 }
 
 // ======================================================
-// OVERRIDE — 2-krokový výběr: skupiny → děti
+// OVERRIDE — krok 1: sekce podle stupně, krok 2: děti
 // ======================================================
 const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dospělák"];
 
 function openOverride() {
   document.getElementById("override-overlay").classList.add("open");
-  document.getElementById("override-search").value = "";
-  renderOverrideList("");
+  showOverrideGroups();
 }
 
 function closeOverride() {
   document.getElementById("override-overlay").classList.remove("open");
 }
 
-function renderOverrideList(query) {
+function showOverrideGroups() {
+  document.getElementById("override-title").textContent = "Ruční výběr dítěte";
+  document.getElementById("override-cancel-btn").textContent = "Zrušit";
+  document.getElementById("override-cancel-btn").onclick = closeOverride;
+  document.getElementById("override-search").style.display = "none";
+  document.getElementById("override-search").value = "";
+
+  const present = [...new Set(deti.map(d => d.stupen || "—"))];
+  const groups = [...STUPNE_ORDER.filter(s => present.includes(s)),
+                  ...present.filter(s => !STUPNE_ORDER.includes(s)).sort()];
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  kids.style.display = "none";
+  step.style.display = "block";
+
+  step.innerHTML = `<div class="group-grid">
+    ${groups.map(g => `
+      <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g}')">${g}</button>
+    `).join("")}
+  </div>`;
+}
+
+function showOverrideKids(stupen) {
+  document.getElementById("override-title").textContent = stupen;
+  document.getElementById("override-cancel-btn").textContent = "← Zpět";
+  document.getElementById("override-cancel-btn").onclick = showOverrideGroups;
+  const search = document.getElementById("override-search");
+  search.style.display = "block";
+  search.value = "";
+
+  const step = document.getElementById("override-step-groups");
+  const kids = document.getElementById("override-step-kids");
+  step.style.display = "none";
+  kids.style.display = "block";
+
+  renderOverrideKids(stupen, "");
+  search.oninput = () => renderOverrideKids(stupen, search.value);
+}
+
+function renderOverrideKids(stupen, query) {
   const q = query.trim().toLowerCase();
-  const list = document.getElementById("override-list");
+  const kids = document.getElementById("override-step-kids");
+  const seznam = deti
+    .filter(d => (d.stupen || "—") === stupen && (!q || d.jmeno.toLowerCase().includes(q)))
+    .sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
 
-  const filtered = q
-    ? deti.filter(d => d.jmeno.toLowerCase().includes(q))
-    : deti;
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="panel-empty">Nikdo nenalezen</div>';
-    return;
-  }
-
-  // Seskup podle stupně, v rámci sekce abecedně
-  const sections = {};
-  for (const d of filtered) {
-    const s = d.stupen || "—";
-    if (!sections[s]) sections[s] = [];
-    sections[s].push(d);
-  }
-  for (const s of Object.keys(sections)) {
-    sections[s].sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
-  }
-
-  const order = [...STUPNE_ORDER, ...Object.keys(sections).filter(s => !STUPNE_ORDER.includes(s))];
-
-  list.innerHTML = order
-    .filter(s => sections[s])
-    .map(s => `
-      <div class="section-label">${s}</div>
-      ${sections[s].map(d => `
+  kids.innerHTML = seznam.length === 0
+    ? '<div class="panel-empty">Nikdo nenalezen</div>'
+    : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
             <div class="panel-item-sub">${d.jidlo}</div>
           </div>
           <div class="panel-item-arrow">›</div>
-        </div>`).join("")}
-    `).join("");
+        </div>`).join("");
 }
+
+function overrideSearch(val) {}  // přepsáno v showOverrideKids
 
 function overrideVydej(uuid) {
   wsSend({ type: "override", uuid });
