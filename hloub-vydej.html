@@ -199,8 +199,9 @@ body {
   display: none;
 }
 
-.incoming-card.ok   { background: var(--green-bg);  border: 2.5px solid rgba(76,184,122,0.4); }
-.incoming-card.warn { background: var(--orange-bg); border: 2.5px solid rgba(240,136,42,0.35); }
+.incoming-card.ok       { background: var(--green-bg);  border: 2.5px solid rgba(76,184,122,0.4); }
+.incoming-card.warn     { background: var(--orange-bg); border: 2.5px solid rgba(240,136,42,0.35); }
+.incoming-card.no_order { background: var(--red-bg);    border: 2.5px solid rgba(224,80,80,0.35); }
 
 @keyframes slideInCard {
   from { opacity: 0; transform: translateX(-20px) scale(0.97); }
@@ -235,8 +236,10 @@ body {
   overflow-wrap: break-word; hyphens: auto;
 }
 
-.ok   .card-meal { color: var(--green); }
-.warn .card-meal { color: var(--orange); }
+.ok       .card-meal { color: var(--green); }
+.warn     .card-meal { color: var(--orange); }
+.no_order .card-meal { color: var(--red); }
+.no_order .card-badge { background: rgba(224,80,80,0.15); color: #A03030; }
 
 .card-meta { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 4px; }
 
@@ -667,6 +670,12 @@ function handleMessage(msg) {
       ukazPrichozi(msg.dite, "warn", msg.cas, false);
       break;
 
+    case "result":
+      if ((msg.status === "no_order" || (msg.status === "err" && msg.info === "nema_objednavku")) && msg.jmeno) {
+        ukazPrichozi({ jmeno: msg.jmeno, jidlo: "Dnes nemá objednávku" }, "no_order", null, false);
+      }
+      break;
+
     case "storno":
       removeFromQueue(msg.uuid);
       if (currentUuid === msg.uuid) hidePrichozi();
@@ -693,8 +702,9 @@ function ukazPrichozi(dite, typ, cas, override) {
   card.className = "incoming-card " + typ;
 
   const cfg = {
-    ok:   { icon: "✅", badge: override ? "Vydej jídlo – ručně" : "Vydej jídlo", meta: override ? "Zadáno obsluhou" : "Právě dorazilo" },
-    warn: { icon: "⚠️", badge: "Pozor – již vydáno", meta: "Jídlo již bylo vydáno dnes" },
+    ok:       { icon: "✅", badge: override ? "Vydej jídlo – ručně" : "Vydej jídlo", meta: override ? "Zadáno obsluhou" : "Právě dorazilo" },
+    warn:     { icon: "⚠️", badge: "Pozor – již vydáno",    meta: "Jídlo již bylo vydáno dnes" },
+    no_order: { icon: "❌", badge: "Bez objednávky",         meta: "Dítě dnes nemá objednaný oběd" },
   };
 
   const c = cfg[typ] || cfg.ok;
