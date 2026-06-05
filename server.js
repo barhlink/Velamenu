@@ -80,43 +80,10 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // GET /api/2n-poll?id=N — proxy k 2N Access Unit přes HTTPS (vyhne se CORS)
+  // GET /api/2n-poll — nahrazen 2N Automation push přes /fingerprint, polling se nepoužívá
   if (parsed.pathname === "/api/2n-poll") {
-    const lastId = parseInt(parsed.query.id || "0", 10);
-    const opts   = {
-      hostname:           CFG.twonIp,
-      port:               443,
-      path:               `/api/log/pull?id=${lastId}&count=100`,
-      headers:            { Authorization: `Bearer ${CFG.twonToken}` },
-      timeout:            2000,
-      rejectUnauthorized: false,  // 2N používá self-signed certifikát
-    };
-
-    const proxy = https.get(opts, (r) => {
-      let body = "";
-      r.on("data", c => body += c);
-      r.on("end", () => {
-        try {
-          const data   = JSON.parse(body);
-          const events = data?.data?.events || [];
-          res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-          res.end(JSON.stringify({ events }));
-        } catch {
-          res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-          res.end(JSON.stringify({ events: [] }));
-        }
-      });
-    });
-
-    proxy.on("error", (err) => {
-      console.error(`[${cas()}] 2N proxy chyba:`, err.message);
-      if (!res.headersSent) {
-        res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-        res.end(JSON.stringify({ events: [] }));
-      }
-    });
-
-    proxy.on("timeout", () => proxy.destroy());
+    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ events: [] }));
     return;
   }
 
