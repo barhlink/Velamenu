@@ -39,6 +39,7 @@ const CFG = {
 const vydano  = new Set();
 const log     = [];
 const clients = new Set();
+let pendingRegistration = null; // { userId, timestamp } — čeká na /fingerprint/name
 
 // ======================================================
 // DATA — načítá se ze souborů při startu nebo /reload
@@ -94,10 +95,70 @@ const httpServer = http.createServer((req, res) => {
     req.on("end", () => {
       const userId = body.trim();
       console.log(`[${cas()}] 2N otisk: userId=${userId}`);
+      if (!uuidMap[userId]) {
+        // Neznámý uživatel — ulož pro spárování s /fingerprint/name
+        pendingRegistration = { userId, timestamp: Date.now() };
+      }
       handleFingerprint(null, userId);
     });
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("ok");
+    return;
+  }
+
+  // 2N Automation push — přijme jméno uživatele a spáruje s čekajícím userId
+  if (parsed.pathname === "/fingerprint/name") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", () => {
+      const userName = body.trim();
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("ok");
+
+      if (!pendingRegistration || Date.now() - pendingRegistration.timestamp > 3000) {
+        console.log(`[${cas()}] /fingerprint/name bez čekající registrace: ${userName}`);
+        return;
+      }
+
+      const { userId } = pendingRegistration;
+      pendingRegistration = null;
+
+      // Vyhledej dítě v Bubble Data API
+      const constraints = JSON.stringify([{ key: "fullname", constraint_type: "equals", value: userName }]);
+      const apiPath = `/api/1.1/obj/kids?constraints=${encodeURIComponent(constraints)}`;
+      const opts = {
+        hostname: "menu.skolavela.cz",
+        path:     apiPath,
+        headers:  { Authorization: "Bearer c39e7242f33f9be6926edd5c15921c21" },
+        timeout:  5000,
+      };
+
+      https.get(opts, (r) => {
+        let data = "";
+        r.on("data", c => data += c);
+        r.on("end", () => {
+          try {
+            const json     = JSON.parse(data);
+            const results  = json?.response?.results || [];
+            if (results.length === 0) {
+              console.log(`[${cas()}] Nenalezen v Bubble: ${userName}`);
+              return;
+            }
+            const kid = results[0];
+            const fullname = kid.fullname_text || userName;
+            uuidMap[userId] = fullname;
+            const uuidmapPath = path.join(__dirname, "data", "uuidmap.json");
+            fs.writeFileSync(uuidmapPath, JSON.stringify(uuidMap, null, 2), "utf8");
+            console.log(`[${cas()}] Registrován: ${fullname} (userId=${userId})`);
+            broadcast({ type: "registrace", jmeno: fullname });
+          } catch (err) {
+            console.error(`[${cas()}] Chyba Bubble API:`, err.message);
+          }
+        });
+      }).on("error", (err) => {
+        console.error(`[${cas()}] Bubble API chyba sítě:`, err.message);
+      }).on("timeout", function() { this.destroy(); });
+    });
     return;
   }
 
@@ -163,9 +224,7 @@ wss.on("connection", (ws, req) => {
 function handleFingerprint(ws, uuid) {
   const jmeno = uuidMap[uuid];
   if (!jmeno) {
-    console.log(`[${cas()}] Neznámý userId: ${uuid}`);
-    send(ws, { type: "result", status: "err", uuid });
-    broadcast({ type: "result", status: "err", info: "neznamy_uzivatel" }, ws);
+    // Čeká se na /fingerprint/name — pokud přijde, zaregistruje a příště proběhne normálně
     return;
   }
 
