@@ -79,6 +79,34 @@ def main():
         json.dump(export, f, ensure_ascii=False, indent=2)
     print(f"Uloženo: {len(export)} záznamů")
 
+    # vsichni.json — všechny aktivní děti (bez ohledu na dnešní objednávku)
+    vsichni_raw = []
+    cursor = 0
+    while True:
+        r = requests.get(f"{BASE}/kids", headers=H, params={
+            "limit": 100, "cursor": cursor,
+            "constraints": json.dumps([{"key": "active", "constraint_type": "equals", "value": "true"}])
+        })
+        d = r.json()["response"]
+        vsichni_raw.extend(d["results"])
+        if d.get("remaining", 0) == 0:
+            break
+        cursor += 100
+    vsichni = []
+    for k in vsichni_raw:
+        jmeno = (k.get("fullname_text") or "").strip()
+        if not jmeno:
+            continue
+        if k.get("kid_category_option_kid_category") == "Dospělák":
+            stupen = "Dospělák"
+        else:
+            class_cat = k.get("class_category_option_class_category", "")
+            stupen = CLASS_MAP.get(class_cat, "")
+        vsichni.append({"uuid": k["_id"], "jmeno": jmeno, "stupen": stupen})
+    with open(f"{DATA}/vsichni.json", "w", encoding="utf-8") as f:
+        json.dump(vsichni, f, ensure_ascii=False, indent=2)
+    print(f"vsichni.json: {len(vsichni)} dětí")
+
     requests.get("http://localhost:3000/reload", timeout=5)
     print("Server reloadován ✓")
 

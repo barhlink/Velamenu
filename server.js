@@ -81,6 +81,30 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // GET /vsichni — seznam všech aktivních dětí pro ruční výběr
+  if (parsed.pathname === "/vsichni") {
+    try {
+      const data = fs.readFileSync(path.join(__dirname, "data", "vsichni.json"), "utf8");
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(data);
+    } catch {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "vsichni.json not found" }));
+    }
+    return;
+  }
+
+  // GET /jidla — unikátní jídla z dnešních objednávek
+  if (parsed.pathname === "/jidla") {
+    const seen = new Map();
+    deti.forEach(d => {
+      if (d.jidlo && !seen.has(d.jidlo)) seen.set(d.jidlo, { jidlo: d.jidlo, polevka: d.polevka || "" });
+    });
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });
+    res.end(JSON.stringify([...seen.values()]));
+    return;
+  }
+
   // GET /api/2n-poll — nahrazen 2N Automation push přes /fingerprint, polling se nepoužívá
   if (parsed.pathname === "/api/2n-poll") {
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
@@ -200,6 +224,9 @@ wss.on("connection", (ws, req) => {
       case "override":
         handleOverride(ws, msg.uuid);
         break;
+      case "override_manual":
+        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka);
+        break;
       case "storno":
         handleStorno(msg.uuid);
         break;
@@ -258,6 +285,16 @@ function handleOverride(ws, uuid) {
   vydano.add(uuid);
   const zaznam = zaloguj(dite, true, uuid);
 
+  send(ws, { type: "result", status: "ok", dite, override: true });
+  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+}
+
+function handleOverrideManual(ws, jmeno, jidlo, polevka) {
+  if (!jmeno || !jidlo) return;
+  const fakeUuid = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "" };
+  vydano.add(fakeUuid);
+  const zaznam = zaloguj(dite, true, fakeUuid);
   send(ws, { type: "result", status: "ok", dite, override: true });
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
 }
