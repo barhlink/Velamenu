@@ -568,7 +568,8 @@ body {
       <input class="panel-search" id="bez-obj-search" type="text" placeholder="Hledat jméno…" style="display:none;">
     </div>
     <div id="bez-obj-step-groups" class="panel-list"></div>
-    <div id="bez-obj-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
+    <div id="bez-obj-step-kids"  style="display:none;flex:1;overflow-y:auto;"></div>
+    <div id="bez-obj-step-jidla" style="display:none;flex:1;overflow-y:auto;padding:16px;"></div>
     <button class="panel-cancel" id="bez-obj-cancel-btn" onclick="closeBezObj()">Zrušit</button>
   </div>
 </div>
@@ -977,13 +978,14 @@ function toggleBezObj(enabled) {
 // ======================================================
 async function openBezObj() {
   document.getElementById("bez-obj-overlay").classList.add("open");
-  if (vsichni.length === 0) {
-    try {
-      const rv = await fetch("/vsichni");
-      const data = rv.ok ? await rv.json() : [];
-      vsichni = Array.isArray(data) ? data : [];
-    } catch { vsichni = []; }
-  }
+  try {
+    const fetches = [];
+    if (vsichni.length === 0) fetches.push(fetch("/vsichni")); else fetches.push(null);
+    fetches.push(fetch("/jidla"));
+    const [rv, rj] = await Promise.all(fetches);
+    if (rv) { const d = rv.ok ? await rv.json() : []; vsichni = Array.isArray(d) ? d : []; }
+    if (rj) { const d = rj.ok ? await rj.json() : []; jidla   = Array.isArray(d) ? d : []; }
+  } catch { /* ponech stávající hodnoty */ }
   showBezObjGroups();
 }
 
@@ -1046,7 +1048,7 @@ function renderBezObjKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="bezObjVydej(${JSON.stringify(d.jmeno)})">
+        <div class="panel-item" onclick="showBezObjJidla(${JSON.stringify(d.jmeno)}, ${JSON.stringify(stupen)})">
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
           </div>
@@ -1054,8 +1056,34 @@ function renderBezObjKids(stupen, query) {
         </div>`).join("");
 }
 
-function bezObjVydej(jmeno) {
-  wsSend({ type: "override_manual", jmeno, jidlo: "", polevka: "" });
+function showBezObjJidla(jmeno, stupen) {
+  document.getElementById("bez-obj-title").textContent = jmeno;
+  document.getElementById("bez-obj-cancel-btn").textContent = "← Zpět";
+  document.getElementById("bez-obj-cancel-btn").onclick = () => showBezObjKids(stupen);
+  document.getElementById("bez-obj-search").style.display = "none";
+
+  document.getElementById("bez-obj-step-kids").style.display  = "none";
+  document.getElementById("bez-obj-step-groups").style.display = "none";
+  const el = document.getElementById("bez-obj-step-jidla");
+  el.style.display = "block";
+
+  if (!Array.isArray(jidla) || jidla.length === 0) {
+    el.innerHTML = '<div class="panel-empty">Dnes nejsou žádná jídla — spusť sync</div>';
+    return;
+  }
+
+  el.innerHTML = jidla.map(j => `
+    <div class="panel-item" onclick="bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || '')})">
+      <div style="min-width:0;">
+        <div class="panel-item-name">${j.jidlo}</div>
+        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
+      </div>
+      <div class="panel-item-arrow" style="color:var(--orange);">›</div>
+    </div>`).join("");
+}
+
+function bezObjVydej(jmeno, jidlo, polevka) {
+  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "" });
   closeBezObj();
 }
 
