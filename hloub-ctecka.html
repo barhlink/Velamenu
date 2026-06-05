@@ -714,6 +714,12 @@ function ukazVysledek(msg) {
     err:  { icon:"❓", badge:"Neznámý uživatel",       name: "",          meal: "Zkus přiložit znovu",     meta: "nebo použij Ruční výběr" },
   };
 
+  if (status === "err" && msg.info === "nema_objednavku") {
+    cfg.err = { icon:"😕", badge:"Evidujeme tě", name: msg.jmeno || "", meal: "Nemáš objednaný oběd", meta: "Kontaktuj obsluhu" };
+  } else if (status === "err" && msg.info === "neznamy_uzivatel") {
+    cfg.err = { icon:"👋", badge:"Vítej!", name: "", meal: "Jsi tu poprvé, hledáme tvůj oběd", meta: "Kontaktuj obsluhu" };
+  }
+
   const c = cfg[status] || cfg.err;
   document.getElementById("r-icon").textContent  = c.icon;
   document.getElementById("r-badge").textContent = c.badge;
