@@ -290,7 +290,7 @@ function handleOverride(ws, uuid) {
 }
 
 function handleOverrideManual(ws, jmeno, jidlo, polevka) {
-  if (!jmeno || !jidlo) return;
+  if (!jmeno) return;
   const fakeUuid = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "" };
   vydano.add(fakeUuid);
