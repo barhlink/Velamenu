@@ -626,6 +626,10 @@ function handleMessage(msg) {
     case "pong":
       break;
 
+    case "registrace":
+      ukazVysledek({ status: "ok", dite: { jmeno: msg.jmeno, jidlo: "Díky, jsi zaregistrován/a." }, _registrace: true });
+      break;
+
     case "reset":
       stornoLog = [];
       goIdle();
