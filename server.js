@@ -194,23 +194,27 @@ wss.on("connection", (ws, req) => {
 // LOGIKA VÝDEJE
 // ======================================================
 function handleFingerprint(ws, uuid) {
-  const mappedUuid = uuidMap[uuid];
-  const dite       = deti.find(d => d.uuid === mappedUuid);
+  const jmeno = uuidMap[uuid];
+  if (!jmeno) {
+    send(ws, { type: "result", status: "err", uuid });
+    return;
+  }
 
+  const dite = deti.find(d => d.jmeno === jmeno);
   if (!dite) {
     send(ws, { type: "result", status: "err", uuid });
     return;
   }
 
-  if (vydano.has(mappedUuid)) {
-    const zaznam = log.find(l => l.uuid === mappedUuid);
+  if (vydano.has(dite.uuid)) {
+    const zaznam = log.find(l => l.uuid === dite.uuid);
     send(ws, { type: "result", status: "warn", dite, vydanoCas: zaznam?.cas });
     broadcast({ type: "vydej_warn", dite, cas: zaznam?.cas }, ws);
     return;
   }
 
-  vydano.add(mappedUuid);
-  const zaznam = zaloguj(dite, false, mappedUuid);
+  vydano.add(dite.uuid);
+  const zaznam = zaloguj(dite, false, dite.uuid);
 
   send(ws, { type: "result", status: "ok", dite });
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas }, ws);
