@@ -940,6 +940,7 @@ function showBezObjGroups() {
   const step = document.getElementById("bez-obj-step-groups");
   const kids = document.getElementById("bez-obj-step-kids");
   kids.style.display = "none";
+  document.getElementById("bez-obj-step-jidla").style.display = "none";
   step.style.display = "block";
 
   const present = [...new Set(vsichni.map(d => d.stupen || "—"))];
@@ -968,6 +969,7 @@ function showBezObjKids(stupen) {
   const step = document.getElementById("bez-obj-step-groups");
   const kids = document.getElementById("bez-obj-step-kids");
   step.style.display = "none";
+  document.getElementById("bez-obj-step-jidla").style.display = "none";
   kids.style.display = "block";
 
   renderBezObjKids(stupen, "");
@@ -984,7 +986,7 @@ function renderBezObjKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="showBezObjJidla(${JSON.stringify(d.jmeno)}, ${JSON.stringify(stupen)})">
+        <div class="panel-item" onclick='showBezObjJidla(${JSON.stringify(d.jmeno)}, ${JSON.stringify(stupen)})'>
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
           </div>
@@ -1009,7 +1011,7 @@ function showBezObjJidla(jmeno, stupen) {
   }
 
   el.innerHTML = jidla.map(j => `
-    <div class="panel-item" onclick="bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || '')})">
+    <div class="panel-item" onclick='bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || "")})'>
       <div style="min-width:0;">
         <div class="panel-item-name">${j.jidlo}</div>
         ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
