@@ -231,8 +231,9 @@ function handleFingerprint(ws, uuid) {
   const dite = deti.find(d => d.jmeno === jmeno);
   if (!dite) {
     console.log(`[${cas()}] Nemá objednávku: ${jmeno}`);
-    send(ws, { type: "result", status: "err", uuid });
-    broadcast({ type: "result", status: "err", info: "nema_objednavku", jmeno }, ws);
+    const errMsg = { type: "result", status: "err", info: "nema_objednavku", jmeno };
+    send(ws, errMsg);
+    broadcast(errMsg, ws);
     return;
   }
 
