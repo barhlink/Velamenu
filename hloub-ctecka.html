@@ -388,6 +388,13 @@ body {
 .group-btn:active { transform: scale(0.96); }
 .group-btn.adults { grid-column: 1 / -1; background: white; border-color: var(--blue); }
 
+.section-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-hint);
+  padding: 12px 22px 4px; background: var(--bg);
+  position: sticky; top: 0;
+}
+
 .storno-item {
   padding: 14px 18px; border-bottom: 1px solid #FDF0F0;
   display: flex; align-items: center; gap: 10px;
@@ -476,11 +483,11 @@ body {
     <div class="view" id="view-override">
       <div class="panel">
         <div class="panel-head">
-          <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
+          <div class="panel-title">Ruční výběr dítěte</div>
+          <input class="panel-search" id="override-search" type="text" placeholder="Hledat jméno…" oninput="renderOverrideList(this.value)">
         </div>
-        <div id="override-step-groups" class="panel-list"></div>
-        <div id="override-step-kids"   style="display:none;flex:1;overflow-y:auto;"></div>
-        <button class="panel-cancel" id="override-cancel-btn" onclick="goIdle()">Zrušit</button>
+        <div class="panel-list" id="override-list"></div>
+        <button class="panel-cancel" onclick="goIdle()">Zrušit</button>
       </div>
     </div>
 
@@ -696,11 +703,6 @@ function goIdle() {
   showView("idle");
 }
 
-function goOverride() {
-  clearAuto();
-  showGroupStep();
-  showView("override");
-}
 
 // ======================================================
 // VÝSLEDEK
@@ -755,52 +757,55 @@ function ukazVysledek(msg) {
 function clearAuto() { clearTimeout(autoTimer); clearInterval(countdownInt); }
 
 // ======================================================
-// OVERRIDE — 2-krokový výběr: skupiny → děti
+// OVERRIDE — sekce podle stupně + vyhledávání
 // ======================================================
-function showGroupStep() {
-  document.getElementById("override-title").textContent = "Ruční výběr dítěte";
-  document.getElementById("override-cancel-btn").textContent = "Zrušit";
-  document.getElementById("override-cancel-btn").onclick = goIdle;
+const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dospělák"];
 
-  const groups = [...new Set(deti.map(d => d.trida || "—"))].sort((a, b) => {
-    if (a === "Dospělí") return 1;
-    if (b === "Dospělí") return -1;
-    return a.localeCompare(b, "cs");
-  });
-
-  const step = document.getElementById("override-step-groups");
-  const kids = document.getElementById("override-step-kids");
-  kids.style.display  = "none";
-  step.style.display  = "block";
-
-  step.innerHTML = `<div class="group-grid">
-    ${groups.map(g => `
-      <button class="group-btn${g === "Dospělí" ? " adults" : ""}" onclick="showKidsStep('${g}')">${g}</button>
-    `).join("")}
-  </div>`;
+function goOverride() {
+  clearAuto();
+  document.getElementById("override-search").value = "";
+  renderOverrideList("");
+  showView("override");
 }
 
-function showKidsStep(trida) {
-  document.getElementById("override-title").textContent = trida;
-  document.getElementById("override-cancel-btn").textContent = "← Skupiny";
-  document.getElementById("override-cancel-btn").onclick = showGroupStep;
+function renderOverrideList(query) {
+  const q = query.trim().toLowerCase();
+  const list = document.getElementById("override-list");
 
-  const step = document.getElementById("override-step-groups");
-  const kids = document.getElementById("override-step-kids");
-  step.style.display = "none";
-  kids.style.display = "block";
+  const filtered = q
+    ? deti.filter(d => d.jmeno.toLowerCase().includes(q))
+    : deti;
 
-  const seznam = deti.filter(d => (d.trida || "—") === trida);
-  kids.innerHTML = seznam.length === 0
-    ? '<div class="panel-empty">Nikdo nenalezen</div>'
-    : seznam.map(d => `
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="panel-empty">Nikdo nenalezen</div>';
+    return;
+  }
+
+  const sections = {};
+  for (const d of filtered) {
+    const s = d.stupen || "—";
+    if (!sections[s]) sections[s] = [];
+    sections[s].push(d);
+  }
+  for (const s of Object.keys(sections)) {
+    sections[s].sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
+  }
+
+  const order = [...STUPNE_ORDER, ...Object.keys(sections).filter(s => !STUPNE_ORDER.includes(s))];
+
+  list.innerHTML = order
+    .filter(s => sections[s])
+    .map(s => `
+      <div class="section-label">${s}</div>
+      ${sections[s].map(d => `
         <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
             <div class="panel-item-sub">${d.jidlo}</div>
           </div>
           <div class="panel-item-arrow">›</div>
-        </div>`).join("");
+        </div>`).join("")}
+    `).join("");
 }
 
 function overrideVydej(uuid) {
