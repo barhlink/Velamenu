@@ -268,7 +268,7 @@ function handleStorno(uuid) {
   const jmeno = idx !== -1 ? log[idx].jmeno : uuid;
   if (idx !== -1) log.splice(idx, 1);
   console.log(`[${cas()}] Storno: ${jmeno}`);
-  // Informovat všechny klienty (ctecka i vydej)
+  ulozVydano();
   broadcast({ type: "storno", uuid }, null);
 }
 
@@ -276,7 +276,27 @@ function zaloguj(dite, override, uuid) {
   const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, cas: cas(), override };
   log.unshift(zaznam);
   console.log(`[${zaznam.cas}] Vydáno: ${dite.jmeno} — ${dite.jidlo}${override ? " (ručně)" : ""}`);
+  ulozVydano();
   return zaznam;
+}
+
+function ulozVydano() {
+  const datum = new Date().toISOString().slice(0, 10);
+  const soubor = path.join(__dirname, "data", "vydano.json");
+  fs.writeFileSync(soubor, JSON.stringify({ datum, vydano: [...vydano] }), "utf8");
+}
+
+function nactiVydano() {
+  const soubor = path.join(__dirname, "data", "vydano.json");
+  try {
+    const data  = JSON.parse(fs.readFileSync(soubor, "utf8"));
+    const dnes  = new Date().toISOString().slice(0, 10);
+    if (data.datum !== dnes) return;
+    data.vydano.forEach(uuid => vydano.add(uuid));
+    console.log(`[${cas()}] Vydano načteno: ${vydano.size} záznamů`);
+  } catch {
+    // soubor neexistuje nebo je poškozený — začínáme čistě
+  }
 }
 
 // ======================================================
@@ -304,6 +324,7 @@ function resetDen() {
   setTimeout(() => {
     vydano.clear();
     log.length = 0;
+    try { fs.unlinkSync(path.join(__dirname, "data", "vydano.json")); } catch {}
     console.log(`[${cas()}] Nový den — stav resetován.`);
     broadcast({ type: "reset" });
     resetDen();
@@ -313,6 +334,7 @@ function resetDen() {
 // ======================================================
 // START
 // ======================================================
+nactiVydano();
 loadData();
 
 httpServer.listen(PORT, "0.0.0.0", () => {
