@@ -285,8 +285,7 @@ function handleOverride(ws, uuid) {
   vydano.add(uuid);
   const zaznam = zaloguj(dite, true, uuid);
 
-  send(ws, { type: "result", status: "ok", dite, override: true });
-  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, null);
 }
 
 function handleOverrideManual(ws, jmeno, jidlo, polevka) {
@@ -295,8 +294,7 @@ function handleOverrideManual(ws, jmeno, jidlo, polevka) {
   const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "" };
   vydano.add(fakeUuid);
   const zaznam = zaloguj(dite, true, fakeUuid);
-  send(ws, { type: "result", status: "ok", dite, override: true });
-  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, null);
 }
 
 function handleStorno(uuid) {
