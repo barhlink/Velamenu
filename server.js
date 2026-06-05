@@ -167,7 +167,7 @@ const httpServer = http.createServer((req, res) => {
   if (parsed.pathname !== '/' && fs.existsSync(filePath)) {
     const ext = path.extname(filePath);
     const mime = { '.html': 'text/html; charset=utf-8', '.png': 'image/png' };
-    res.writeHead(200, { 'Content-Type': mime[ext] || 'text/plain' });
+    res.writeHead(200, { 'Content-Type': mime[ext] || 'text/plain', 'Cache-Control': 'no-cache' });
     fs.createReadStream(filePath).pipe(res);
     return;
   }
