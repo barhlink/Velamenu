@@ -791,8 +791,10 @@ async function openOverride() {
   document.getElementById("override-overlay").classList.add("open");
   try {
     const [rv, rj] = await Promise.all([fetch("/vsichni"), fetch("/jidla")]);
-    vsichni = await rv.json();
-    jidla   = await rj.json();
+    vsichni = rv.ok  ? await rv.json() : [];
+    jidla   = rj.ok  ? await rj.json() : [];
+    if (!Array.isArray(vsichni)) vsichni = [];
+    if (!Array.isArray(jidla))   jidla   = [];
   } catch (e) {
     vsichni = [];
     jidla   = [];
