@@ -519,21 +519,15 @@ body {
 
 </div>
 
-<!-- OVERRIDE OVERLAY — krok 1: výběr osoby, krok 2: výběr jídla, krok 3: potvrzení -->
+<!-- OVERRIDE OVERLAY — objednaní: sekce → dítě → okamžitý výdej -->
 <div class="overlay" id="override-overlay">
   <div class="panel">
     <div class="panel-head">
       <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
       <input class="panel-search" id="override-search" type="text" placeholder="Hledat jméno…" style="display:none;">
     </div>
-    <!-- Krok 1a: skupiny (stupen) -->
     <div id="override-step-groups" class="panel-list"></div>
-    <!-- Krok 1b: děti ve skupině -->
     <div id="override-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
-    <!-- Krok 2: výběr jídla -->
-    <div id="override-step-jidla" style="display:none;flex:1;overflow-y:auto;padding:16px;"></div>
-    <!-- Krok 3: potvrzení -->
-    <div id="override-step-confirm" style="display:none;flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:32px;gap:20px;text-align:center;"></div>
     <button class="panel-cancel" id="override-cancel-btn" onclick="closeOverride()">Zrušit</button>
   </div>
 </div>
@@ -787,28 +781,13 @@ const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dosp
 let vsichni = [];   // načteno z /vsichni
 let jidla   = [];   // načteno z /jidla
 
-async function openOverride() {
+function openOverride() {
   document.getElementById("override-overlay").classList.add("open");
-  try {
-    const [rv, rj] = await Promise.all([fetch("/vsichni"), fetch("/jidla")]);
-    vsichni = rv.ok  ? await rv.json() : [];
-    jidla   = rj.ok  ? await rj.json() : [];
-    if (!Array.isArray(vsichni)) vsichni = [];
-    if (!Array.isArray(jidla))   jidla   = [];
-  } catch (e) {
-    vsichni = [];
-    jidla   = [];
-  }
   showOverrideGroups();
 }
 
 function closeOverride() {
   document.getElementById("override-overlay").classList.remove("open");
-}
-
-function _hideAllSteps() {
-  ["override-step-groups","override-step-kids","override-step-jidla","override-step-confirm"]
-    .forEach(id => { document.getElementById(id).style.display = "none"; });
 }
 
 function showOverrideGroups() {
@@ -819,21 +798,23 @@ function showOverrideGroups() {
   search.style.display = "none";
   search.value = "";
 
-  _hideAllSteps();
+  document.getElementById("override-step-kids").style.display = "none";
   const step = document.getElementById("override-step-groups");
   step.style.display = "block";
 
-  const present = [...new Set(vsichni.map(d => d.stupen || "—"))];
+  const present = [...new Set(deti.map(d => d.stupen || "—"))];
   const groups = [...STUPNE_ORDER.filter(s => present.includes(s)),
                   ...present.filter(s => !STUPNE_ORDER.includes(s)).sort()];
 
-  step.innerHTML = `<div class="group-grid">
-    ${groups.map(g => `
-      <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g.replace(/'/g,"\\'")}')">
-        ${g}
-      </button>
-    `).join("")}
-  </div>`;
+  step.innerHTML = groups.length === 0
+    ? '<div class="panel-empty">Dnes nejsou žádné objednávky</div>'
+    : `<div class="group-grid">
+        ${groups.map(g => `
+          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g.replace(/'/g,"\\'")}')">
+            ${g}
+          </button>
+        `).join("")}
+      </div>`;
 }
 
 function showOverrideKids(stupen) {
@@ -844,7 +825,7 @@ function showOverrideKids(stupen) {
   search.style.display = "block";
   search.value = "";
 
-  _hideAllSteps();
+  document.getElementById("override-step-groups").style.display = "none";
   const kids = document.getElementById("override-step-kids");
   kids.style.display = "block";
 
@@ -855,69 +836,24 @@ function showOverrideKids(stupen) {
 function renderOverrideKids(stupen, query) {
   const q = query.trim().toLowerCase();
   const kids = document.getElementById("override-step-kids");
-  const seznam = vsichni
+  const seznam = deti
     .filter(d => (d.stupen || "—") === stupen && (!q || d.jmeno.toLowerCase().includes(q)))
     .sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
 
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="showOverrideJidla(${JSON.stringify(d.jmeno)})">
+        <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
-            <div class="panel-item-sub">${d.stupen || ""}</div>
+            <div class="panel-item-sub">${d.jidlo || ""}${d.polevka ? " · " + d.polevka : ""}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");
 }
 
-function showOverrideJidla(jmeno) {
-  document.getElementById("override-title").textContent = jmeno;
-  document.getElementById("override-cancel-btn").textContent = "← Zpět";
-  document.getElementById("override-cancel-btn").onclick = showOverrideGroups;
-  document.getElementById("override-search").style.display = "none";
-
-  _hideAllSteps();
-  const el = document.getElementById("override-step-jidla");
-  el.style.display = "block";
-
-  if (jidla.length === 0) {
-    el.innerHTML = '<div class="panel-empty">Dnes nejsou žádná jídla</div>';
-    return;
-  }
-
-  el.innerHTML = jidla.map(j => `
-    <div class="panel-item" onclick="showOverrideConfirm(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || '')})">
-      <div style="min-width:0;">
-        <div class="panel-item-name">${j.jidlo}</div>
-        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
-      </div>
-      <div class="panel-item-arrow">›</div>
-    </div>`).join("");
-}
-
-function showOverrideConfirm(jmeno, jidlo, polevka) {
-  document.getElementById("override-title").textContent = "Potvrdit výdej";
-  document.getElementById("override-cancel-btn").textContent = "← Zpět";
-  document.getElementById("override-cancel-btn").onclick = () => showOverrideJidla(jmeno);
-  document.getElementById("override-search").style.display = "none";
-
-  _hideAllSteps();
-  const el = document.getElementById("override-step-confirm");
-  el.style.display = "flex";
-  el.style.flexDirection = "column";
-
-  el.innerHTML = `
-    <div style="font-size:18px;font-weight:800;color:var(--text);line-height:1.4;">${jmeno}</div>
-    <div style="font-size:15px;font-weight:600;color:var(--text-light);">${jidlo}${polevka ? " · " + polevka : ""}</div>
-    <button onclick="overrideManualVydej(${JSON.stringify(jmeno)},${JSON.stringify(jidlo)},${JSON.stringify(polevka)})"
-      style="margin-top:12px;padding:16px 32px;border:none;border-radius:16px;background:var(--orange);color:white;font-family:'Nunito',sans-serif;font-size:17px;font-weight:800;cursor:pointer;">
-      ✓ Vydat
-    </button>`;
-}
-
-function overrideManualVydej(jmeno, jidlo, polevka) {
-  wsSend({ type: "override_manual", jmeno, jidlo, polevka });
+function overrideVydej(uuid) {
+  wsSend({ type: "override", uuid });
   closeOverride();
 }
 
