@@ -532,6 +532,24 @@ body {
   </div>
 </div>
 
+<!-- CONFIRM DIALOG -->
+<div class="overlay" id="confirm-overlay" style="display:none;z-index:200;">
+  <div class="panel" style="max-height:260px;">
+    <div class="panel-head">
+      <div class="panel-title">Potvrdit výdej</div>
+    </div>
+    <div style="padding:24px 22px;text-align:center;">
+      <div style="font-size:15px;font-weight:700;color:var(--text-light);margin-bottom:8px;">Opravdu vyzvednout oběd pro</div>
+      <div id="confirm-jmeno" style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px;"></div>
+      <div id="confirm-jidlo" style="font-size:13px;font-weight:600;color:var(--text-light);"></div>
+    </div>
+    <div style="display:flex;gap:12px;padding:0 22px 22px;">
+      <button onclick="confirmZrusit()" style="flex:1;padding:14px;border:2px solid #D0E8F5;border-radius:14px;background:white;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:var(--text-light);cursor:pointer;">Zrušit</button>
+      <button onclick="confirmPotvrdit()" style="flex:2;padding:14px;border:none;border-radius:14px;background:var(--green);color:white;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">✓ Vydat</button>
+    </div>
+  </div>
+</div>
+
 <!-- NASTAVENÍ OVERLAY -->
 <div class="overlay" id="settings-overlay">
   <div class="panel">
@@ -843,7 +861,7 @@ function renderOverrideKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
+        <div class="panel-item" onclick='overrideConfirm("${d.uuid}", ${JSON.stringify(d.jmeno)}, ${JSON.stringify((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
             <div class="panel-item-sub">${d.jidlo || ""}${d.polevka ? " · " + d.polevka : ""}</div>
@@ -852,8 +870,25 @@ function renderOverrideKids(stupen, query) {
         </div>`).join("");
 }
 
-function overrideVydej(uuid) {
-  wsSend({ type: "override", uuid });
+let _confirmUuid = null;
+
+function overrideConfirm(uuid, jmeno, jidlo) {
+  _confirmUuid = uuid;
+  document.getElementById("confirm-jmeno").textContent = jmeno;
+  document.getElementById("confirm-jidlo").textContent = jidlo;
+  document.getElementById("confirm-overlay").style.display = "flex";
+}
+
+function confirmZrusit() {
+  document.getElementById("confirm-overlay").style.display = "none";
+  _confirmUuid = null;
+}
+
+function confirmPotvrdit() {
+  if (!_confirmUuid) return;
+  wsSend({ type: "override", uuid: _confirmUuid });
+  document.getElementById("confirm-overlay").style.display = "none";
+  _confirmUuid = null;
   closeOverride();
 }
 
