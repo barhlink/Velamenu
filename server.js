@@ -308,11 +308,18 @@ function handleStorno(uuid) {
 }
 
 function zaloguj(dite, override, uuid) {
-  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, cas: cas(), override };
+  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", cas: cas(), override };
   log.unshift(zaznam);
   console.log(`[${zaznam.cas}] Vydáno: ${dite.jmeno} — ${dite.jidlo}${override ? " (ručně)" : ""}`);
   ulozVydano();
+  ulozLog();
   return zaznam;
+}
+
+function ulozLog() {
+  const datum = new Date().toISOString().slice(0, 10);
+  const soubor = path.join(__dirname, "data", `log-${datum}.json`);
+  fs.writeFileSync(soubor, JSON.stringify(log, null, 2), "utf8");
 }
 
 function ulozVydano() {
@@ -360,6 +367,8 @@ function resetDen() {
     vydano.clear();
     log.length = 0;
     try { fs.unlinkSync(path.join(__dirname, "data", "vydano.json")); } catch {}
+    const vcerDatum = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString().slice(0, 10);
+    try { fs.unlinkSync(path.join(__dirname, "data", `log-${vcerDatum}.json`)); } catch {}
     console.log(`[${cas()}] Nový den — stav resetován.`);
     broadcast({ type: "reset" });
     resetDen();
