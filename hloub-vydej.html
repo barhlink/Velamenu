@@ -298,8 +298,16 @@ body {
 .q-dot.warn     { background: var(--orange); opacity: 0.5; }
 
 .q-name { font-size: 15px; font-weight: 800; color: var(--text); }
-.q-meal { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
-.q-time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-hint); white-space: nowrap; }
+.q-meal { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-meal-sub { font-size: 11px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
+.q-porce {
+  flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--blue-light); color: var(--blue);
+  font-size: 15px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.q-time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-hint); white-space: nowrap; flex-shrink: 0; }
 
 .queue-empty {
   padding: 32px 16px;
@@ -676,16 +684,16 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       // Obnov frontu z logu (nejstarší → nejnovější = zdola nahoru)
       (msg.log || []).slice().reverse().forEach(item => {
-        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override });
-        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override);
+        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen });
+        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen);
       });
       updateStats();
       break;
 
     case "vydej_new":
       ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
-      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override });
-      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override);
+      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen });
+      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen);
       updateStats();
       break;
 
@@ -751,20 +759,25 @@ function hidePrichozi() {
 // ======================================================
 // FRONTA — zůstává celý den, žádný auto-hide
 // ======================================================
-function addToQueue(uuid, jmeno, jidlo, cas, override) {
+const PORCE_MAP = { "Předškolák": "0", "První stupeň": "1", "Druhý stupeň": "2", "Dospělák": "D" };
+
+function addToQueue(uuid, jmeno, jidlo, cas, override, stupen) {
   const list  = document.getElementById("queue-list");
   const empty = list.querySelector(".queue-empty");
   if (empty) empty.remove();
 
+  const porce = stupen ? (PORCE_MAP[stupen] ?? "") : "";
   const el = document.createElement("div");
-  el.className     = "queue-item";
-  el.dataset.uuid  = uuid;
+  el.className    = "queue-item";
+  el.dataset.uuid = uuid;
   el.innerHTML = `
     <div class="q-dot ${override ? 'override' : 'fp'}"></div>
     <div style="flex:1;min-width:0;">
       <div class="q-name">${jmeno}</div>
-      <div class="q-meal">${jidlo}${override ? ' · <span style="color:var(--orange)">ručně</span>' : ''}</div>
+      <div class="q-meal">${jidlo || "—"}</div>
+      ${override ? '<div class="q-meal-sub" style="color:var(--orange)">ručně</div>' : ""}
     </div>
+    ${porce !== "" ? `<div class="q-porce">${porce}</div>` : ""}
     <div class="q-time">${cas || ""}</div>
   `;
   list.insertBefore(el, list.firstChild);

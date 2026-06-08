@@ -708,6 +708,11 @@ function goIdle() {
 // ======================================================
 // VÝSLEDEK
 // ======================================================
+function _porceText(stupen) {
+  const m = { "Předškolák": "Porce 0 · předškolák", "První stupeň": "Porce 1 · první stupeň", "Druhý stupeň": "Porce 2 · druhý stupeň", "Dospělák": "Dospělácká porce 🍽️" };
+  return (m[stupen] || "Jídlo jde do výdeje 🍽️");
+}
+
 function ukazVysledek(msg) {
   clearAuto();
   const { status, dite, vydanoCas } = msg;
@@ -716,7 +721,7 @@ function ukazVysledek(msg) {
   bubble.className = "result-bubble " + status;
 
   const cfg = {
-    ok:   { icon:"✅", badge:"Dobrou chuť!",          name: dite?.jmeno, meal: dite?.jidlo,               meta: "Jídlo jde do výdeje 🍽️" },
+    ok:   { icon:"✅", badge:"Dobrou chuť!",          name: dite?.jmeno, meal: dite?.jidlo,               meta: _porceText(dite?.stupen) },
     warn: { icon:"⚠️", badge:"Pozor",                  name: dite?.jmeno, meal: "Jídlo již bylo vydáno",   meta: vydanoCas ? "Vydáno v " + vydanoCas : "" },
     err:  { icon:"❓", badge:"Neznámý uživatel",       name: "",          meal: "Zkus přiložit znovu",     meta: "nebo použij Ruční výběr" },
   };

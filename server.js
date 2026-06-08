@@ -308,7 +308,7 @@ function handleStorno(uuid) {
 }
 
 function zaloguj(dite, override, uuid) {
-  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", cas: cas(), override };
+  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", stupen: dite.stupen || "", cas: cas(), override };
   log.unshift(zaznam);
   console.log(`[${zaznam.cas}] Vydáno: ${dite.jmeno} — ${dite.jidlo}${override ? " (ručně)" : ""}`);
   ulozVydano();
