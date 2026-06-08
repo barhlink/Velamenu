@@ -619,6 +619,13 @@ function handleMessage(msg) {
       stornoLog = (msg.log || []).map(l => ({ uuid: l.uuid, jmeno: l.jmeno, jidlo: l.jidlo, cas: l.cas, override: l.override }));
       break;
 
+    case "vydej_new": {
+      const cas2 = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
+      stornoLog.unshift({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: cas2, override: !!msg.override });
+      ukazVysledek({ status: "ok", dite: msg.dite });
+      break;
+    }
+
     case "result":
       if (msg.status === "ok" && msg.dite) {
         const cas = new Date().toLocaleTimeString("cs-CZ",{ hour:"2-digit", minute:"2-digit" });
