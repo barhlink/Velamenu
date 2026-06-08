@@ -725,6 +725,8 @@ function ukazVysledek(msg) {
     cfg.err = { icon:"😕", badge:"Evidujeme tě", name: msg.jmeno || "", meal: "Nemáš objednaný oběd", meta: "Kontaktuj obsluhu" };
   } else if (status === "err" && msg.info === "neznamy_uzivatel") {
     cfg.err = { icon:"👋", badge:"Vítej!", name: "", meal: "Jsi tu poprvé, hledáme tvůj oběd", meta: "Kontaktuj obsluhu" };
+  } else if (status === "err" && msg.info === "neznamy_otisk") {
+    cfg.err = { icon:"🤚", badge:"Neznámý otisk", name: "", meal: "Přihlas se u obsluhy", meta: "" };
   }
 
   const c = cfg[status] || cfg.err;

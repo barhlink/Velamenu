@@ -251,7 +251,7 @@ wss.on("connection", (ws, req) => {
 function handleFingerprint(ws, uuid) {
   const jmeno = uuidMap[uuid];
   if (!jmeno) {
-    // Čeká se na /fingerprint/name — pokud přijde, zaregistruje a příště proběhne normálně
+    broadcast({ type: "result", status: "err", info: "neznamy_otisk" }, null);
     return;
   }
 
