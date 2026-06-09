@@ -1,0 +1,9 @@
+{
+  "name": "Velamenu Čtečka",
+  "short_name": "Čtečka",
+  "start_url": "/hloub-ctecka.html",
+  "display": "standalone",
+  "background_color": "#1AABDC",
+  "theme_color": "#1AABDC",
+  "orientation": "portrait"
+}

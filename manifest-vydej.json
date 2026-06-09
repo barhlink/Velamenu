@@ -1,0 +1,9 @@
+{
+  "name": "Velamenu Výdej",
+  "short_name": "Výdej",
+  "start_url": "/hloub-vydej.html",
+  "display": "standalone",
+  "background_color": "#1AABDC",
+  "theme_color": "#1AABDC",
+  "orientation": "landscape"
+}
