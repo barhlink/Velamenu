@@ -2,7 +2,12 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Výdej">
+<link rel="manifest" href="/manifest-vydej.json">
 <title>Velamenu – Hloubětín Výdej</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -32,6 +37,8 @@
 }
 
 html, body { height: 100%; overflow: hidden; }
+html { height: -webkit-fill-available; }
+body { height: 100vh; min-height: -webkit-fill-available; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 
 body {
   font-family: 'Nunito', sans-serif;
@@ -45,7 +52,6 @@ body {
 
 .app {
   width: 100%;
-  max-width: 680px; /* Výdej může být na větším tabletu */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -297,9 +303,21 @@ body {
 .q-dot.override { background: var(--orange); }
 .q-dot.warn     { background: var(--orange); opacity: 0.5; }
 
-.q-name { font-size: 15px; font-weight: 800; color: var(--text); }
-.q-meal { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
-.q-time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-hint); white-space: nowrap; }
+.q-name { font-size: 19px; font-weight: 800; color: var(--blue); }
+.q-meal { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 2px; line-height: 1.3; }
+.q-meal-sub { font-size: 13px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
+.q-source { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.q-source-fp     { background: var(--green-bg);  color: var(--green); }
+.q-source-rucne  { background: var(--orange-bg); color: var(--orange); }
+.q-source-vydej  { background: var(--blue-light); color: var(--blue); }
+.q-porce {
+  flex-shrink: 0;
+  width: 56px; height: 56px; border-radius: 14px;
+  background: var(--blue-light); color: #1a1a1a;
+  font-size: 32px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.q-time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-hint); white-space: nowrap; flex-shrink: 0; }
 
 .queue-empty {
   padding: 32px 16px;
@@ -371,8 +389,8 @@ body {
 .panel-item:hover  { background: var(--blue-light); }
 .panel-item:active { background: var(--blue-mid); }
 
-.panel-item-name { font-size: 16px; font-weight: 800; color: var(--text); }
-.panel-item-sub  { font-size: 12px; font-weight: 600; color: var(--text-light); margin-top: 2px; }
+.panel-item-name { font-size: 18px; font-weight: 800; color: var(--text); }
+.panel-item-sub  { font-size: 15px; font-weight: 700; color: var(--text-light); margin-top: 3px; }
 .panel-item-arrow { font-size: 22px; color: var(--blue); font-weight: 700; flex-shrink: 0; }
 .panel-empty { padding: 40px; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-hint); }
 
@@ -519,22 +537,34 @@ body {
 
 </div>
 
-<!-- OVERRIDE OVERLAY — krok 1: výběr osoby, krok 2: výběr jídla, krok 3: potvrzení -->
+<!-- OVERRIDE OVERLAY — objednaní: sekce → dítě → okamžitý výdej -->
 <div class="overlay" id="override-overlay">
   <div class="panel">
     <div class="panel-head">
       <div class="panel-title" id="override-title">Ruční výběr dítěte</div>
       <input class="panel-search" id="override-search" type="text" placeholder="Hledat jméno…" style="display:none;">
     </div>
-    <!-- Krok 1a: skupiny (stupen) -->
     <div id="override-step-groups" class="panel-list"></div>
-    <!-- Krok 1b: děti ve skupině -->
     <div id="override-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
-    <!-- Krok 2: výběr jídla -->
-    <div id="override-step-jidla" style="display:none;flex:1;overflow-y:auto;padding:16px;"></div>
-    <!-- Krok 3: potvrzení -->
-    <div id="override-step-confirm" style="display:none;flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:32px;gap:20px;text-align:center;"></div>
     <button class="panel-cancel" id="override-cancel-btn" onclick="closeOverride()">Zrušit</button>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="overlay" id="confirm-overlay" style="display:none;z-index:200;">
+  <div class="panel" style="max-height:260px;">
+    <div class="panel-head">
+      <div class="panel-title">Potvrdit výdej</div>
+    </div>
+    <div style="padding:24px 22px;text-align:center;">
+      <div style="font-size:15px;font-weight:700;color:var(--text-light);margin-bottom:8px;">Opravdu vyzvednout oběd pro</div>
+      <div id="confirm-jmeno" style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px;"></div>
+      <div id="confirm-jidlo" style="font-size:17px;font-weight:700;color:var(--text-light);"></div>
+    </div>
+    <div style="display:flex;gap:12px;padding:0 22px 22px;">
+      <button onclick="confirmZrusit()" style="flex:1;padding:14px;border:2px solid #D0E8F5;border-radius:14px;background:white;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:var(--text-light);cursor:pointer;">Zrušit</button>
+      <button onclick="confirmPotvrdit()" style="flex:2;padding:14px;border:none;border-radius:14px;background:var(--green);color:white;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">✓ Vydat</button>
+    </div>
   </div>
 </div>
 
@@ -568,7 +598,8 @@ body {
       <input class="panel-search" id="bez-obj-search" type="text" placeholder="Hledat jméno…" style="display:none;">
     </div>
     <div id="bez-obj-step-groups" class="panel-list"></div>
-    <div id="bez-obj-step-kids" style="display:none;flex:1;overflow-y:auto;"></div>
+    <div id="bez-obj-step-kids"  style="display:none;flex:1;overflow-y:auto;"></div>
+    <div id="bez-obj-step-jidla" style="display:none;flex:1;overflow-y:auto;padding:16px;"></div>
     <button class="panel-cancel" id="bez-obj-cancel-btn" onclick="closeBezObj()">Zrušit</button>
   </div>
 </div>
@@ -663,16 +694,16 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       // Obnov frontu z logu (nejstarší → nejnovější = zdola nahoru)
       (msg.log || []).slice().reverse().forEach(item => {
-        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override });
-        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override);
+        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, source: item.source });
+        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen, item.source);
       });
       updateStats();
       break;
 
     case "vydej_new":
       ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
-      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override });
-      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override);
+      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, source: msg.source });
+      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen, msg.source);
       updateStats();
       break;
 
@@ -738,20 +769,29 @@ function hidePrichozi() {
 // ======================================================
 // FRONTA — zůstává celý den, žádný auto-hide
 // ======================================================
-function addToQueue(uuid, jmeno, jidlo, cas, override) {
+const PORCE_MAP = { "Předškolák": "0", "První stupeň": "1", "Druhý stupeň": "2", "Dospělák": "D" };
+
+function addToQueue(uuid, jmeno, jidlo, cas, override, stupen, source) {
   const list  = document.getElementById("queue-list");
   const empty = list.querySelector(".queue-empty");
   if (empty) empty.remove();
 
+  const porce = stupen ? (PORCE_MAP[stupen] ?? "") : "";
+  const src = source || (override ? "vydej" : "fp");
+  const srcLabel = src === "fp" ? "čtečka" : src === "ctecka" ? "ručně" : "obsluha";
+  const srcClass = src === "fp" ? "q-source-fp" : src === "ctecka" ? "q-source-rucne" : "q-source-vydej";
+
   const el = document.createElement("div");
-  el.className     = "queue-item";
-  el.dataset.uuid  = uuid;
+  el.className    = "queue-item";
+  el.dataset.uuid = uuid;
   el.innerHTML = `
-    <div class="q-dot ${override ? 'override' : 'fp'}"></div>
+    <div class="q-dot ${src === 'fp' ? 'fp' : 'override'}"></div>
     <div style="flex:1;min-width:0;">
       <div class="q-name">${jmeno}</div>
-      <div class="q-meal">${jidlo}${override ? ' · <span style="color:var(--orange)">ručně</span>' : ''}</div>
+      <div class="q-meal">${jidlo || "—"}</div>
+      <div class="q-source ${srcClass}">${srcLabel}</div>
     </div>
+    ${porce !== "" ? `<div class="q-porce">${porce}</div>` : ""}
     <div class="q-time">${cas || ""}</div>
   `;
   list.insertBefore(el, list.firstChild);
@@ -786,28 +826,13 @@ const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dosp
 let vsichni = [];   // načteno z /vsichni
 let jidla   = [];   // načteno z /jidla
 
-async function openOverride() {
+function openOverride() {
   document.getElementById("override-overlay").classList.add("open");
-  try {
-    const [rv, rj] = await Promise.all([fetch("/vsichni"), fetch("/jidla")]);
-    vsichni = rv.ok  ? await rv.json() : [];
-    jidla   = rj.ok  ? await rj.json() : [];
-    if (!Array.isArray(vsichni)) vsichni = [];
-    if (!Array.isArray(jidla))   jidla   = [];
-  } catch (e) {
-    vsichni = [];
-    jidla   = [];
-  }
   showOverrideGroups();
 }
 
 function closeOverride() {
   document.getElementById("override-overlay").classList.remove("open");
-}
-
-function _hideAllSteps() {
-  ["override-step-groups","override-step-kids","override-step-jidla","override-step-confirm"]
-    .forEach(id => { document.getElementById(id).style.display = "none"; });
 }
 
 function showOverrideGroups() {
@@ -818,21 +843,23 @@ function showOverrideGroups() {
   search.style.display = "none";
   search.value = "";
 
-  _hideAllSteps();
+  document.getElementById("override-step-kids").style.display = "none";
   const step = document.getElementById("override-step-groups");
   step.style.display = "block";
 
-  const present = [...new Set(vsichni.map(d => d.stupen || "—"))];
+  const present = [...new Set(deti.map(d => d.stupen || "—"))];
   const groups = [...STUPNE_ORDER.filter(s => present.includes(s)),
                   ...present.filter(s => !STUPNE_ORDER.includes(s)).sort()];
 
-  step.innerHTML = `<div class="group-grid">
-    ${groups.map(g => `
-      <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g.replace(/'/g,"\\'")}')">
-        ${g}
-      </button>
-    `).join("")}
-  </div>`;
+  step.innerHTML = groups.length === 0
+    ? '<div class="panel-empty">Dnes nejsou žádné objednávky</div>'
+    : `<div class="group-grid">
+        ${groups.map(g => `
+          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g.replace(/'/g,"\\'")}')">
+            ${g}
+          </button>
+        `).join("")}
+      </div>`;
 }
 
 function showOverrideKids(stupen) {
@@ -843,7 +870,7 @@ function showOverrideKids(stupen) {
   search.style.display = "block";
   search.value = "";
 
-  _hideAllSteps();
+  document.getElementById("override-step-groups").style.display = "none";
   const kids = document.getElementById("override-step-kids");
   kids.style.display = "block";
 
@@ -854,69 +881,41 @@ function showOverrideKids(stupen) {
 function renderOverrideKids(stupen, query) {
   const q = query.trim().toLowerCase();
   const kids = document.getElementById("override-step-kids");
-  const seznam = vsichni
+  const seznam = deti
     .filter(d => (d.stupen || "—") === stupen && (!q || d.jmeno.toLowerCase().includes(q)))
     .sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
 
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="showOverrideJidla(${JSON.stringify(d.jmeno)})">
+        <div class="panel-item" onclick='overrideConfirm("${d.uuid}", ${JSON.stringify(d.jmeno)}, ${JSON.stringify((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
-            <div class="panel-item-sub">${d.stupen || ""}</div>
+            <div class="panel-item-sub">${d.jidlo || ""}${d.polevka ? " · " + d.polevka : ""}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");
 }
 
-function showOverrideJidla(jmeno) {
-  document.getElementById("override-title").textContent = jmeno;
-  document.getElementById("override-cancel-btn").textContent = "← Zpět";
-  document.getElementById("override-cancel-btn").onclick = showOverrideGroups;
-  document.getElementById("override-search").style.display = "none";
+let _confirmUuid = null;
 
-  _hideAllSteps();
-  const el = document.getElementById("override-step-jidla");
-  el.style.display = "block";
-
-  if (jidla.length === 0) {
-    el.innerHTML = '<div class="panel-empty">Dnes nejsou žádná jídla</div>';
-    return;
-  }
-
-  el.innerHTML = jidla.map(j => `
-    <div class="panel-item" onclick="showOverrideConfirm(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || '')})">
-      <div style="min-width:0;">
-        <div class="panel-item-name">${j.jidlo}</div>
-        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
-      </div>
-      <div class="panel-item-arrow">›</div>
-    </div>`).join("");
+function overrideConfirm(uuid, jmeno, jidlo) {
+  _confirmUuid = uuid;
+  document.getElementById("confirm-jmeno").textContent = jmeno;
+  document.getElementById("confirm-jidlo").textContent = jidlo;
+  document.getElementById("confirm-overlay").style.display = "flex";
 }
 
-function showOverrideConfirm(jmeno, jidlo, polevka) {
-  document.getElementById("override-title").textContent = "Potvrdit výdej";
-  document.getElementById("override-cancel-btn").textContent = "← Zpět";
-  document.getElementById("override-cancel-btn").onclick = () => showOverrideJidla(jmeno);
-  document.getElementById("override-search").style.display = "none";
-
-  _hideAllSteps();
-  const el = document.getElementById("override-step-confirm");
-  el.style.display = "flex";
-  el.style.flexDirection = "column";
-
-  el.innerHTML = `
-    <div style="font-size:18px;font-weight:800;color:var(--text);line-height:1.4;">${jmeno}</div>
-    <div style="font-size:15px;font-weight:600;color:var(--text-light);">${jidlo}${polevka ? " · " + polevka : ""}</div>
-    <button onclick="overrideManualVydej(${JSON.stringify(jmeno)},${JSON.stringify(jidlo)},${JSON.stringify(polevka)})"
-      style="margin-top:12px;padding:16px 32px;border:none;border-radius:16px;background:var(--orange);color:white;font-family:'Nunito',sans-serif;font-size:17px;font-weight:800;cursor:pointer;">
-      ✓ Vydat
-    </button>`;
+function confirmZrusit() {
+  document.getElementById("confirm-overlay").style.display = "none";
+  _confirmUuid = null;
 }
 
-function overrideManualVydej(jmeno, jidlo, polevka) {
-  wsSend({ type: "override_manual", jmeno, jidlo, polevka });
+function confirmPotvrdit() {
+  if (!_confirmUuid) return;
+  wsSend({ type: "override", uuid: _confirmUuid, source: "vydej" });
+  document.getElementById("confirm-overlay").style.display = "none";
+  _confirmUuid = null;
   closeOverride();
 }
 
@@ -977,13 +976,14 @@ function toggleBezObj(enabled) {
 // ======================================================
 async function openBezObj() {
   document.getElementById("bez-obj-overlay").classList.add("open");
-  if (vsichni.length === 0) {
-    try {
-      const rv = await fetch("/vsichni");
-      const data = rv.ok ? await rv.json() : [];
-      vsichni = Array.isArray(data) ? data : [];
-    } catch { vsichni = []; }
-  }
+  try {
+    const fetches = [];
+    if (vsichni.length === 0) fetches.push(fetch("/vsichni")); else fetches.push(null);
+    fetches.push(fetch("/jidla"));
+    const [rv, rj] = await Promise.all(fetches);
+    if (rv) { const d = rv.ok ? await rv.json() : []; vsichni = Array.isArray(d) ? d : []; }
+    if (rj) { const d = rj.ok ? await rj.json() : []; jidla   = Array.isArray(d) ? d : []; }
+  } catch { /* ponech stávající hodnoty */ }
   showBezObjGroups();
 }
 
@@ -1002,6 +1002,7 @@ function showBezObjGroups() {
   const step = document.getElementById("bez-obj-step-groups");
   const kids = document.getElementById("bez-obj-step-kids");
   kids.style.display = "none";
+  document.getElementById("bez-obj-step-jidla").style.display = "none";
   step.style.display = "block";
 
   const present = [...new Set(vsichni.map(d => d.stupen || "—"))];
@@ -1030,6 +1031,7 @@ function showBezObjKids(stupen) {
   const step = document.getElementById("bez-obj-step-groups");
   const kids = document.getElementById("bez-obj-step-kids");
   step.style.display = "none";
+  document.getElementById("bez-obj-step-jidla").style.display = "none";
   kids.style.display = "block";
 
   renderBezObjKids(stupen, "");
@@ -1046,7 +1048,7 @@ function renderBezObjKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="bezObjVydej(${JSON.stringify(d.jmeno)})">
+        <div class="panel-item" onclick='showBezObjJidla(${JSON.stringify(d.jmeno)}, ${JSON.stringify(stupen)})'>
           <div style="min-width:0;">
             <div class="panel-item-name">${d.jmeno}</div>
           </div>
@@ -1054,8 +1056,34 @@ function renderBezObjKids(stupen, query) {
         </div>`).join("");
 }
 
-function bezObjVydej(jmeno) {
-  wsSend({ type: "override_manual", jmeno, jidlo: "", polevka: "" });
+function showBezObjJidla(jmeno, stupen) {
+  document.getElementById("bez-obj-title").textContent = jmeno;
+  document.getElementById("bez-obj-cancel-btn").textContent = "← Zpět";
+  document.getElementById("bez-obj-cancel-btn").onclick = () => showBezObjKids(stupen);
+  document.getElementById("bez-obj-search").style.display = "none";
+
+  document.getElementById("bez-obj-step-kids").style.display  = "none";
+  document.getElementById("bez-obj-step-groups").style.display = "none";
+  const el = document.getElementById("bez-obj-step-jidla");
+  el.style.display = "block";
+
+  if (!Array.isArray(jidla) || jidla.length === 0) {
+    el.innerHTML = '<div class="panel-empty">Dnes nejsou žádná jídla — spusť sync</div>';
+    return;
+  }
+
+  el.innerHTML = jidla.map(j => `
+    <div class="panel-item" onclick='bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || "")}, ${JSON.stringify(stupen)})'>
+      <div style="min-width:0;">
+        <div class="panel-item-name">${j.jidlo}</div>
+        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
+      </div>
+      <div class="panel-item-arrow" style="color:var(--orange);">›</div>
+    </div>`).join("");
+}
+
+function bezObjVydej(jmeno, jidlo, polevka, stupen) {
+  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "", source: "vydej" });
   closeBezObj();
 }
 

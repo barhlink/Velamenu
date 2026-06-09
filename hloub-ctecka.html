@@ -828,7 +828,7 @@ function renderOverrideKids(stupen, query) {
 }
 
 function overrideVydej(uuid) {
-  wsSend({ type: "override", uuid });
+  wsSend({ type: "override", uuid, source: "ctecka" });
   goIdle();
 }
 

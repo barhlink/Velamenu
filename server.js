@@ -222,10 +222,10 @@ wss.on("connection", (ws, req) => {
         handleFingerprint(ws, msg.uuid);
         break;
       case "override":
-        handleOverride(ws, msg.uuid);
+        handleOverride(ws, msg.uuid, msg.source || "vydej");
         break;
       case "override_manual":
-        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka);
+        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka, msg.stupen, msg.source || "vydej");
         break;
       case "storno":
         handleStorno(msg.uuid);
@@ -251,7 +251,7 @@ wss.on("connection", (ws, req) => {
 function handleFingerprint(ws, uuid) {
   const jmeno = uuidMap[uuid];
   if (!jmeno) {
-    // Čeká se na /fingerprint/name — pokud přijde, zaregistruje a příště proběhne normálně
+    broadcast({ type: "result", status: "err", info: "neznamy_otisk" }, null);
     return;
   }
 
@@ -278,25 +278,23 @@ function handleFingerprint(ws, uuid) {
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas }, ws);
 }
 
-function handleOverride(ws, uuid) {
+function handleOverride(ws, uuid, source) {
   const dite = deti.find(d => d.uuid === uuid);
   if (!dite) return;
 
   vydano.add(uuid);
-  const zaznam = zaloguj(dite, true, uuid);
+  const zaznam = zaloguj(dite, true, uuid, source);
 
-  send(ws, { type: "result", status: "ok", dite, override: true });
-  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true, source }, null);
 }
 
-function handleOverrideManual(ws, jmeno, jidlo, polevka) {
+function handleOverrideManual(ws, jmeno, jidlo, polevka, stupen, source) {
   if (!jmeno) return;
   const fakeUuid = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "" };
+  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "", stupen: stupen || "" };
   vydano.add(fakeUuid);
-  const zaznam = zaloguj(dite, true, fakeUuid);
-  send(ws, { type: "result", status: "ok", dite, override: true });
-  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, ws);
+  const zaznam = zaloguj(dite, true, fakeUuid, source);
+  broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true, source }, null);
 }
 
 function handleStorno(uuid) {
@@ -309,12 +307,19 @@ function handleStorno(uuid) {
   broadcast({ type: "storno", uuid }, null);
 }
 
-function zaloguj(dite, override, uuid) {
-  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, cas: cas(), override };
+function zaloguj(dite, override, uuid, source) {
+  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", stupen: dite.stupen || "", cas: cas(), override, source: source || "fp" };
   log.unshift(zaznam);
   console.log(`[${zaznam.cas}] Vydáno: ${dite.jmeno} — ${dite.jidlo}${override ? " (ručně)" : ""}`);
   ulozVydano();
+  ulozLog();
   return zaznam;
+}
+
+function ulozLog() {
+  const datum = new Date().toISOString().slice(0, 10);
+  const soubor = path.join(__dirname, "data", `log-${datum}.json`);
+  fs.writeFileSync(soubor, JSON.stringify(log, null, 2), "utf8");
 }
 
 function ulozVydano() {
@@ -362,6 +367,8 @@ function resetDen() {
     vydano.clear();
     log.length = 0;
     try { fs.unlinkSync(path.join(__dirname, "data", "vydano.json")); } catch {}
+    const vcerDatum = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString().slice(0, 10);
+    try { fs.unlinkSync(path.join(__dirname, "data", `log-${vcerDatum}.json`)); } catch {}
     console.log(`[${cas()}] Nový den — stav resetován.`);
     broadcast({ type: "reset" });
     resetDen();
