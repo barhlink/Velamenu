@@ -1059,7 +1059,7 @@ function showBezObjJidla(jmeno, stupen) {
   }
 
   el.innerHTML = jidla.map(j => `
-    <div class="panel-item" onclick='bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || "")})'>
+    <div class="panel-item" onclick='bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || "")}, ${JSON.stringify(stupen)})'>
       <div style="min-width:0;">
         <div class="panel-item-name">${j.jidlo}</div>
         ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
@@ -1068,8 +1068,8 @@ function showBezObjJidla(jmeno, stupen) {
     </div>`).join("");
 }
 
-function bezObjVydej(jmeno, jidlo, polevka) {
-  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "" });
+function bezObjVydej(jmeno, jidlo, polevka, stupen) {
+  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "" });
   closeBezObj();
 }
 

@@ -225,7 +225,7 @@ wss.on("connection", (ws, req) => {
         handleOverride(ws, msg.uuid);
         break;
       case "override_manual":
-        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka);
+        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka, msg.stupen);
         break;
       case "storno":
         handleStorno(msg.uuid);
@@ -288,10 +288,10 @@ function handleOverride(ws, uuid) {
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, null);
 }
 
-function handleOverrideManual(ws, jmeno, jidlo, polevka) {
+function handleOverrideManual(ws, jmeno, jidlo, polevka, stupen) {
   if (!jmeno) return;
   const fakeUuid = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "" };
+  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "", stupen: stupen || "" };
   vydano.add(fakeUuid);
   const zaznam = zaloguj(dite, true, fakeUuid);
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true }, null);
