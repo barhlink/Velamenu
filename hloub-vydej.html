@@ -306,6 +306,9 @@ body {
 .q-name { font-size: 19px; font-weight: 800; color: var(--blue); }
 .q-meal { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 2px; line-height: 1.3; }
 .q-meal-sub { font-size: 13px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
+.q-source { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.q-source-fp     { background: var(--green-bg);  color: var(--green); }
+.q-source-manual { background: var(--orange-bg); color: var(--orange); }
 .q-porce {
   flex-shrink: 0;
   width: 56px; height: 56px; border-radius: 14px;
@@ -781,7 +784,7 @@ function addToQueue(uuid, jmeno, jidlo, cas, override, stupen) {
     <div style="flex:1;min-width:0;">
       <div class="q-name">${jmeno}</div>
       <div class="q-meal">${jidlo || "—"}</div>
-      ${override ? '<div class="q-meal-sub" style="color:var(--orange)">ručně</div>' : ""}
+      <div class="q-source ${override ? 'q-source-manual' : 'q-source-fp'}">${override ? "obsluha" : "čtečka"}</div>
     </div>
     ${porce !== "" ? `<div class="q-porce">${porce}</div>` : ""}
     <div class="q-time">${cas || ""}</div>
