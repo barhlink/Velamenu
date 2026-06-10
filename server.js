@@ -126,10 +126,6 @@ const httpServer = http.createServer((req, res) => {
       if (!uuidMap[userId]) {
         // Neznámý uživatel — ulož pro spárování s /fingerprint/name
         pendingRegistration = { userId, timestamp: Date.now() };
-      } else if (!deti.find(d => d.jmeno === uuidMap[userId])) {
-        // Jméno v uuidMap nesedí s dnešními objednávkami — auto-oprava přes /fingerprint/name
-        console.log(`[${cas()}] Zastaralé jméno pro userId=${userId} ("${uuidMap[userId]}"), čekám na /fingerprint/name`);
-        pendingRegistration = { userId, timestamp: Date.now() };
       }
       handleFingerprint(null, userId);
     });
