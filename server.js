@@ -118,6 +118,10 @@ const httpServer = http.createServer((req, res) => {
     req.on("data", chunk => body += chunk);
     req.on("end", () => {
       const userId = body.trim();
+      if (!userId) {
+        console.log(`[${cas()}] 2N otisk: prázdné userId — ignorováno`);
+        return;
+      }
       console.log(`[${cas()}] 2N otisk: userId=${userId}`);
       if (!uuidMap[userId]) {
         // Neznámý uživatel — ulož pro spárování s /fingerprint/name
@@ -249,6 +253,7 @@ wss.on("connection", (ws, req) => {
 // LOGIKA VÝDEJE
 // ======================================================
 function handleFingerprint(ws, uuid) {
+  if (!uuid) return;
   const jmeno = uuidMap[uuid];
   if (!jmeno) {
     broadcast({ type: "result", status: "err", info: "neznamy_otisk" }, null);
