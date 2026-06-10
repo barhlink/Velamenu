@@ -308,7 +308,8 @@ body {
 .q-meal-sub { font-size: 13px; font-weight: 600; color: var(--text-light); margin-top: 1px; }
 .q-source { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .q-source-fp     { background: var(--green-bg);  color: var(--green); }
-.q-source-manual { background: var(--orange-bg); color: var(--orange); }
+.q-source-rucne  { background: var(--orange-bg); color: var(--orange); }
+.q-source-vydej  { background: var(--blue-light); color: var(--blue); }
 .q-porce {
   flex-shrink: 0;
   width: 56px; height: 56px; border-radius: 14px;
@@ -693,16 +694,16 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       // Obnov frontu z logu (nejstarší → nejnovější = zdola nahoru)
       (msg.log || []).slice().reverse().forEach(item => {
-        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen });
-        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen);
+        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, source: item.source });
+        addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen, item.source);
       });
       updateStats();
       break;
 
     case "vydej_new":
       ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
-      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen });
-      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen);
+      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, source: msg.source });
+      addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen, msg.source);
       updateStats();
       break;
 
@@ -770,21 +771,25 @@ function hidePrichozi() {
 // ======================================================
 const PORCE_MAP = { "Předškolák": "0", "První stupeň": "1", "Druhý stupeň": "2", "Dospělák": "D" };
 
-function addToQueue(uuid, jmeno, jidlo, cas, override, stupen) {
+function addToQueue(uuid, jmeno, jidlo, cas, override, stupen, source) {
   const list  = document.getElementById("queue-list");
   const empty = list.querySelector(".queue-empty");
   if (empty) empty.remove();
 
   const porce = stupen ? (PORCE_MAP[stupen] ?? "") : "";
+  const src = source || (override ? "vydej" : "fp");
+  const srcLabel = src === "fp" ? "čtečka" : src === "ctecka" ? "ručně" : "obsluha";
+  const srcClass = src === "fp" ? "q-source-fp" : src === "ctecka" ? "q-source-rucne" : "q-source-vydej";
+
   const el = document.createElement("div");
   el.className    = "queue-item";
   el.dataset.uuid = uuid;
   el.innerHTML = `
-    <div class="q-dot ${override ? 'override' : 'fp'}"></div>
+    <div class="q-dot ${src === 'fp' ? 'fp' : 'override'}"></div>
     <div style="flex:1;min-width:0;">
       <div class="q-name">${jmeno}</div>
       <div class="q-meal">${jidlo || "—"}</div>
-      <div class="q-source ${override ? 'q-source-manual' : 'q-source-fp'}">${override ? "obsluha" : "čtečka"}</div>
+      <div class="q-source ${srcClass}">${srcLabel}</div>
     </div>
     ${porce !== "" ? `<div class="q-porce">${porce}</div>` : ""}
     <div class="q-time">${cas || ""}</div>
@@ -908,7 +913,7 @@ function confirmZrusit() {
 
 function confirmPotvrdit() {
   if (!_confirmUuid) return;
-  wsSend({ type: "override", uuid: _confirmUuid });
+  wsSend({ type: "override", uuid: _confirmUuid, source: "vydej" });
   document.getElementById("confirm-overlay").style.display = "none";
   _confirmUuid = null;
   closeOverride();
@@ -1078,7 +1083,7 @@ function showBezObjJidla(jmeno, stupen) {
 }
 
 function bezObjVydej(jmeno, jidlo, polevka, stupen) {
-  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "" });
+  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "", source: "vydej" });
   closeBezObj();
 }
 
