@@ -2,9 +2,10 @@
 import requests, json, os
 from datetime import date
 
-TOKEN = "c39e7242f33f9be6926edd5c15921c21"
 BASE = "https://menu.skolavela.cz/api/1.1/obj"
 DATA = "/home/velan/velamenu-vydej/data"
+with open(f"{DATA}/config.json", encoding="utf-8") as f:
+    TOKEN = json.load(f)["bubbleToken"]
 H = {"Authorization": f"Bearer {TOKEN}"}
 
 CLASS_MAP = {

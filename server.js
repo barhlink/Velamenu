@@ -25,13 +25,17 @@ const url       = require("url");
 const PORT = 3000;
 
 // ======================================================
-// KONFIGURACE 2N Access Unit
-// Změň IP, uživatele a heslo podle svého nastavení
+// KONFIGURACE — tokeny a IP jsou v data/config.json (mimo git)
+// Šablona: data-config.example.json
 // ======================================================
-const CFG = {
-  twonIp:    "192.168.1.227",  // ← IP adresa 2N čtečky v síti školy
-  twonToken: "3tchR+/tFUe3ch/SxZ4bkpzkKg/+XfDRwy2pwhoZdgNfWgpK",          // ← Bearer token (nebo heslo) pro 2N HTTP API
-};
+let CFG;
+try {
+  CFG = JSON.parse(fs.readFileSync(path.join(__dirname, "data", "config.json"), "utf8"));
+} catch (err) {
+  console.error("CHYBA: nelze načíst data/config.json — vytvoř ho podle data-config.example.json");
+  console.error(err.message);
+  process.exit(1);
+}
 
 // ======================================================
 // STAV (resetuje se každý den)
@@ -157,7 +161,7 @@ const httpServer = http.createServer((req, res) => {
       const opts = {
         hostname: "menu.skolavela.cz",
         path:     apiPath,
-        headers:  { Authorization: "Bearer c39e7242f33f9be6926edd5c15921c21" },
+        headers:  { Authorization: "Bearer " + CFG.bubbleToken },
         timeout:  5000,
       };
 
