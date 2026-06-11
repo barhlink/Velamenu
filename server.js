@@ -190,12 +190,15 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // Statické soubory
-  const filePath = path.join(__dirname, parsed.pathname);
-  if (parsed.pathname !== '/' && fs.existsSync(filePath)) {
-    const ext = path.extname(filePath);
-    const mime = { '.html': 'text/html; charset=utf-8', '.png': 'image/png' };
-    res.writeHead(200, { 'Content-Type': mime[ext] || 'text/plain', 'Cache-Control': 'no-cache' });
+  // Statické soubory — jen povolené typy přímo z kořene repa
+  // (žádné ../, žádný přístup do data/, node_modules/ ani ke zdrojákům)
+  const staticMime = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.json': 'application/json; charset=utf-8' };
+  const reqName  = path.basename(decodeURIComponent(parsed.pathname));
+  const reqExt   = path.extname(reqName).toLowerCase();
+  const filePath = path.join(__dirname, reqName);
+  if (parsed.pathname !== '/' && parsed.pathname === '/' + reqName &&
+      staticMime[reqExt] && fs.existsSync(filePath)) {
+    res.writeHead(200, { 'Content-Type': staticMime[reqExt], 'Cache-Control': 'no-cache' });
     fs.createReadStream(filePath).pipe(res);
     return;
   }
