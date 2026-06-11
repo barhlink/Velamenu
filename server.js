@@ -58,6 +58,10 @@ function loadData() {
     deti    = JSON.parse(fs.readFileSync(exportPath,  "utf8"));
     uuidMap = JSON.parse(fs.readFileSync(uuidmapPath, "utf8"));
     console.log(`[${cas()}] Data načtena: ${deti.length} dětí, ${Object.keys(uuidMap).length} UUID mapování`);
+    // Otisk identifikuje dítě podle jména — duplicitní jména by se pletla
+    const jmena = new Set(), dupl = new Set();
+    deti.forEach(d => { if (jmena.has(d.jmeno)) dupl.add(d.jmeno); jmena.add(d.jmeno); });
+    if (dupl.size) console.warn(`[${cas()}] POZOR — duplicitní jména v export.json: ${[...dupl].join(", ")}`);
     // Pošle aktualizovaný seznam dětí všem připojeným klientům
     broadcast({ type: "init", log, deti });
   } catch (err) {

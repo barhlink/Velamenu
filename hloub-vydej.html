@@ -771,6 +771,15 @@ function hidePrichozi() {
 // ======================================================
 const PORCE_MAP = { "Předškolák": "0", "První stupeň": "1", "Druhý stupeň": "2", "Dospělák": "D" };
 
+// Escapování dat ze serveru — jméno s apostrofem/HTML znakem by rozbilo innerHTML či onclick
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+// Bezpečný JS string literál do onclick atributu
+function attr(v) {
+  return esc(JSON.stringify(String(v ?? "")));
+}
+
 function addToQueue(uuid, jmeno, jidlo, cas, override, stupen, source) {
   const list  = document.getElementById("queue-list");
   const empty = list.querySelector(".queue-empty");
@@ -787,8 +796,8 @@ function addToQueue(uuid, jmeno, jidlo, cas, override, stupen, source) {
   el.innerHTML = `
     <div class="q-dot ${src === 'fp' ? 'fp' : 'override'}"></div>
     <div style="flex:1;min-width:0;">
-      <div class="q-name">${jmeno}</div>
-      <div class="q-meal">${jidlo || "—"}</div>
+      <div class="q-name">${esc(jmeno)}</div>
+      <div class="q-meal">${esc(jidlo || "—")}</div>
       <div class="q-source ${srcClass}">${srcLabel}</div>
     </div>
     ${porce !== "" ? `<div class="q-porce">${porce}</div>` : ""}
@@ -855,8 +864,8 @@ function showOverrideGroups() {
     ? '<div class="panel-empty">Dnes nejsou žádné objednávky</div>'
     : `<div class="group-grid">
         ${groups.map(g => `
-          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g.replace(/'/g,"\\'")}')">
-            ${g}
+          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids(${attr(g)})">
+            ${esc(g)}
           </button>
         `).join("")}
       </div>`;
@@ -888,10 +897,10 @@ function renderOverrideKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick='overrideConfirm("${d.uuid}", ${JSON.stringify(d.jmeno)}, ${JSON.stringify((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
+        <div class="panel-item" onclick='overrideConfirm(${attr(d.uuid)}, ${attr(d.jmeno)}, ${attr((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
           <div style="min-width:0;">
-            <div class="panel-item-name">${d.jmeno}</div>
-            <div class="panel-item-sub">${d.jidlo || ""}${d.polevka ? " · " + d.polevka : ""}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}</div>
+            <div class="panel-item-sub">${esc((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");
@@ -938,10 +947,10 @@ function openStorno() {
     list.innerHTML = queueItems.map(i => `
       <div class="storno-item">
         <div style="flex:1;min-width:0;">
-          <div class="panel-item-name">${i.jmeno}</div>
-          <div class="panel-item-sub">${i.jidlo} · ${i.cas || ""}${i.override ? ' · ručně' : ''}</div>
+          <div class="panel-item-name">${esc(i.jmeno)}</div>
+          <div class="panel-item-sub">${esc(i.jidlo)} · ${esc(i.cas || "")}${i.override ? ' · ručně' : ''}</div>
         </div>
-        <button class="storno-btn" onclick="doStorno('${i.uuid}')">Storno</button>
+        <button class="storno-btn" onclick="doStorno(${attr(i.uuid)})">Storno</button>
       </div>`).join("");
   }
   document.getElementById("storno-overlay").classList.add("open");
@@ -1013,8 +1022,8 @@ function showBezObjGroups() {
     ? '<div class="panel-empty">Žádné skupiny (spusť sync_bubble.py)</div>'
     : `<div class="group-grid">
         ${groups.map(g => `
-          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showBezObjKids('${g.replace(/'/g,"\\'")}')">
-            ${g}
+          <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showBezObjKids(${attr(g)})">
+            ${esc(g)}
           </button>
         `).join("")}
       </div>`;
@@ -1048,9 +1057,9 @@ function renderBezObjKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick='showBezObjJidla(${JSON.stringify(d.jmeno)}, ${JSON.stringify(stupen)})'>
+        <div class="panel-item" onclick='showBezObjJidla(${attr(d.jmeno)}, ${attr(stupen)})'>
           <div style="min-width:0;">
-            <div class="panel-item-name">${d.jmeno}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}</div>
           </div>
           <div class="panel-item-arrow" style="color:var(--orange);">›</div>
         </div>`).join("");
@@ -1073,10 +1082,10 @@ function showBezObjJidla(jmeno, stupen) {
   }
 
   el.innerHTML = jidla.map(j => `
-    <div class="panel-item" onclick='bezObjVydej(${JSON.stringify(jmeno)}, ${JSON.stringify(j.jidlo)}, ${JSON.stringify(j.polevka || "")}, ${JSON.stringify(stupen)})'>
+    <div class="panel-item" onclick='bezObjVydej(${attr(jmeno)}, ${attr(j.jidlo)}, ${attr(j.polevka || "")}, ${attr(stupen)})'>
       <div style="min-width:0;">
-        <div class="panel-item-name">${j.jidlo}</div>
-        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${j.polevka}</div>` : ""}
+        <div class="panel-item-name">${esc(j.jidlo)}</div>
+        ${j.polevka ? `<div class="panel-item-sub">Polévka: ${esc(j.polevka)}</div>` : ""}
       </div>
       <div class="panel-item-arrow" style="color:var(--orange);">›</div>
     </div>`).join("");

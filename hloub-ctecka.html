@@ -806,7 +806,7 @@ function showOverrideGroups() {
 
   step.innerHTML = `<div class="group-grid">
     ${groups.map(g => `
-      <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids('${g}')">${g}</button>
+      <button class="group-btn${g === "Dospělák" ? " adults" : ""}" onclick="showOverrideKids(${attr(g)})">${esc(g)}</button>
     `).join("")}
   </div>`;
 }
@@ -838,16 +838,30 @@ function renderOverrideKids(stupen, query) {
   kids.innerHTML = seznam.length === 0
     ? '<div class="panel-empty">Nikdo nenalezen</div>'
     : seznam.map(d => `
-        <div class="panel-item" onclick="overrideVydej('${d.uuid}')">
+        <div class="panel-item" onclick="overrideVydej(${attr(d.uuid)})">
           <div style="min-width:0;">
-            <div class="panel-item-name">${d.jmeno}</div>
-            <div class="panel-item-sub">${d.jidlo}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}</div>
+            <div class="panel-item-sub">${esc(d.jidlo)}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");
 }
 
+// Escapování dat ze serveru — jméno s apostrofem/HTML znakem by rozbilo innerHTML či onclick
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+// Bezpečný JS string literál do onclick atributu
+function attr(v) {
+  return esc(JSON.stringify(String(v ?? "")));
+}
+
+let _overrideLock = false;
+
 function overrideVydej(uuid) {
+  if (_overrideLock) return;
+  _overrideLock = true;
+  setTimeout(() => { _overrideLock = false; }, 2000);
   wsSend({ type: "override", uuid, source: "ctecka" });
   goIdle();
 }
@@ -873,10 +887,10 @@ function openStorno() {
     list.innerHTML = stornoLog.map(i => `
       <div class="storno-item">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:800;color:var(--text);">${i.jmeno}</div>
-          <div style="font-size:12px;font-weight:600;color:var(--text-light);">${i.jidlo} · ${i.cas || ""}${i.override ? ' · ručně' : ''}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text);">${esc(i.jmeno)}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);">${esc(i.jidlo)} · ${esc(i.cas || "")}${i.override ? ' · ručně' : ''}</div>
         </div>
-        <button class="storno-btn" onclick="doStorno('${i.uuid}')">Storno</button>
+        <button class="storno-btn" onclick="doStorno(${attr(i.uuid)})">Storno</button>
       </div>`).join("");
   }
   document.getElementById("storno-panel").classList.add("open");
