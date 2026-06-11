@@ -263,6 +263,17 @@ wss.on("connection", (ws, req) => {
 // ======================================================
 // LOGIKA VÝDEJE
 // ======================================================
+// Tolerantní porovnání jmen — uuidmap.json a export.json se můžou lišit
+// v mezerách, velikosti písmen či diakritice (např. "novák " vs "Novak")
+function normJmeno(s) {
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function handleFingerprint(ws, uuid) {
   if (!uuid) return;
   const jmeno = uuidMap[uuid];
@@ -271,7 +282,11 @@ function handleFingerprint(ws, uuid) {
     return;
   }
 
-  const dite = deti.find(d => d.jmeno === jmeno);
+  let dite = deti.find(d => d.jmeno === jmeno);
+  if (!dite) {
+    dite = deti.find(d => normJmeno(d.jmeno) === normJmeno(jmeno));
+    if (dite) console.warn(`[${cas()}] Jméno nesedí přesně: uuidmap="${jmeno}" vs export="${dite.jmeno}" — oprav uuidmap.json`);
+  }
   if (!dite) {
     console.log(`[${cas()}] Nemá objednávku: ${jmeno}`);
     const errMsg = { type: "result", status: "err", info: "nema_objednavku", jmeno };
