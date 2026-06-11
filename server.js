@@ -294,6 +294,12 @@ function handleOverride(ws, uuid, source) {
   const dite = deti.find(d => d.uuid === uuid);
   if (!dite) return;
 
+  if (vydano.has(uuid)) {
+    const zaznam = log.find(l => l.uuid === uuid);
+    broadcast({ type: "vydej_warn", dite, cas: zaznam?.cas }, null);
+    return;
+  }
+
   vydano.add(uuid);
   const zaznam = zaloguj(dite, true, uuid, source);
 
@@ -316,6 +322,7 @@ function handleStorno(uuid) {
   if (idx !== -1) log.splice(idx, 1);
   console.log(`[${cas()}] Storno: ${jmeno}`);
   ulozVydano();
+  ulozLog();
   broadcast({ type: "storno", uuid }, null);
 }
 
@@ -338,6 +345,20 @@ function ulozVydano() {
   const datum = new Date().toISOString().slice(0, 10);
   const soubor = path.join(__dirname, "data", "vydano.json");
   fs.writeFileSync(soubor, JSON.stringify({ datum, vydano: [...vydano] }), "utf8");
+}
+
+function nactiLog() {
+  const datum = new Date().toISOString().slice(0, 10);
+  const soubor = path.join(__dirname, "data", `log-${datum}.json`);
+  try {
+    const data = JSON.parse(fs.readFileSync(soubor, "utf8"));
+    if (Array.isArray(data)) {
+      log.push(...data);
+      console.log(`[${cas()}] Log načten: ${log.length} záznamů`);
+    }
+  } catch {
+    // soubor neexistuje — začínáme čistě
+  }
 }
 
 function nactiVydano() {
@@ -391,6 +412,7 @@ function resetDen() {
 // START
 // ======================================================
 nactiVydano();
+nactiLog();
 loadData();
 
 httpServer.listen(PORT, "0.0.0.0", () => {
