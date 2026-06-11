@@ -336,19 +336,19 @@ function zaloguj(dite, override, uuid, source) {
 }
 
 function ulozLog() {
-  const datum = new Date().toISOString().slice(0, 10);
+  const datum = dnesniDatum();
   const soubor = path.join(__dirname, "data", `log-${datum}.json`);
   fs.writeFileSync(soubor, JSON.stringify(log, null, 2), "utf8");
 }
 
 function ulozVydano() {
-  const datum = new Date().toISOString().slice(0, 10);
+  const datum = dnesniDatum();
   const soubor = path.join(__dirname, "data", "vydano.json");
   fs.writeFileSync(soubor, JSON.stringify({ datum, vydano: [...vydano] }), "utf8");
 }
 
 function nactiLog() {
-  const datum = new Date().toISOString().slice(0, 10);
+  const datum = dnesniDatum();
   const soubor = path.join(__dirname, "data", `log-${datum}.json`);
   try {
     const data = JSON.parse(fs.readFileSync(soubor, "utf8"));
@@ -365,7 +365,7 @@ function nactiVydano() {
   const soubor = path.join(__dirname, "data", "vydano.json");
   try {
     const data  = JSON.parse(fs.readFileSync(soubor, "utf8"));
-    const dnes  = new Date().toISOString().slice(0, 10);
+    const dnes  = dnesniDatum();
     if (data.datum !== dnes) return;
     data.vydano.forEach(uuid => vydano.add(uuid));
     console.log(`[${cas()}] Vydano načteno: ${vydano.size} záznamů`);
@@ -392,6 +392,12 @@ function cas() {
   return new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+// Lokální datum YYYY-MM-DD (toISOString je UTC — kolem půlnoci by vracel včerejšek)
+function dnesniDatum(d) {
+  const x = d || new Date();
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
 // Každý den o půlnoci reset stavu
 function resetDen() {
   const now = new Date();
@@ -400,7 +406,9 @@ function resetDen() {
     vydano.clear();
     log.length = 0;
     try { fs.unlinkSync(path.join(__dirname, "data", "vydano.json")); } catch {}
-    const vcerDatum = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString().slice(0, 10);
+    // Datum počítáme až teď (po půlnoci) — "now" z naplánování je včerejší
+    const ted = new Date();
+    const vcerDatum = dnesniDatum(new Date(ted.getFullYear(), ted.getMonth(), ted.getDate() - 1));
     try { fs.unlinkSync(path.join(__dirname, "data", `log-${vcerDatum}.json`)); } catch {}
     console.log(`[${cas()}] Nový den — stav resetován.`);
     broadcast({ type: "reset" });
