@@ -851,6 +851,8 @@ function normQ(s) {
   return String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
+// Escapov\u00e1n\u00ed dat ze serveru \u2014 jm\u00e9no s apostrofem/HTML znakem by rozbilo innerHTML \u010di onclick
+function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 // Bezpečný JS string literál do onclick atributu
