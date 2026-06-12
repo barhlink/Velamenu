@@ -276,11 +276,14 @@ function normJmeno(s) {
 
 function handleFingerprint(ws, uuid) {
   if (!uuid) return;
-  const jmeno = uuidMap[uuid];
+  let jmeno = uuidMap[uuid];
   if (!jmeno) {
     broadcast({ type: "result", status: "err", info: "neznamy_otisk" }, null);
     return;
   }
+  // Pokud je jméno ve formátu "2N Jméno (Bubble Jméno)", použij jméno z závorky
+  const bubbleAlias = jmeno.match(/\(([^)]+)\)$/);
+  if (bubbleAlias) jmeno = bubbleAlias[1].trim();
 
   let dite = deti.find(d => d.jmeno === jmeno);
   if (!dite) {
