@@ -161,6 +161,16 @@ body {
 .idle-headline { font-size: 26px; font-weight: 900; color: var(--text); text-align: center; line-height: 1.2; }
 .idle-sub { font-size: 15px; font-weight: 600; color: var(--text-light); text-align: center; }
 
+/* ======== CLOSED (mimo dobu oběda) ======== */
+#view-closed {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.closed-icon { font-size: 56px; opacity: 0.35; }
+.closed-headline { font-size: 26px; font-weight: 900; color: var(--text); text-align: center; line-height: 1.3; }
+.closed-sub { font-size: 15px; font-weight: 600; color: var(--text-light); text-align: center; }
+
 /* ======== RESULT (rychlé potvrzení) ======== */
 #view-result {
   align-items: center;
@@ -457,6 +467,13 @@ body {
   <!-- STAGE -->
   <div class="stage">
 
+    <!-- CLOSED — mimo dobu oběda -->
+    <div class="view" id="view-closed">
+      <div class="closed-icon">🍽️</div>
+      <div class="closed-headline">Výdej obědů<br>není aktivní</div>
+      <div class="closed-sub">Obědy se vydávají<br>11:45 – 13:45</div>
+    </div>
+
     <!-- IDLE -->
     <div class="view active" id="view-idle">
       <div class="fp-outer">
@@ -662,7 +679,7 @@ function handleMessage(msg) {
 // FINGERPRINT — vstupní bod z 2N API
 // ======================================================
 function onFingerprint(uuid) {
-  if (pollingPaused) return;
+  if (!jeObed() || pollingPaused) return;
   pollingPaused = true; // debounce — ignoruj další otisky dokud se nevrátí idle
   if (ws && ws.readyState === WebSocket.OPEN) {
     wsSend({ type: "fingerprint", uuid });
@@ -710,11 +727,42 @@ function showView(name) {
   document.getElementById("view-" + name).classList.add("active");
 }
 
+// ======================================================
+// ČASOVÁ BRÁNA — aktivní jen 11:45–13:45
+// ======================================================
+const OBED_OD  = { h: 11, m: 45 };
+const OBED_DO  = { h: 13, m: 45 };
+
+function jeObed() {
+  const now = new Date();
+  const min = now.getHours() * 60 + now.getMinutes();
+  return min >= OBED_OD.h * 60 + OBED_OD.m && min < OBED_DO.h * 60 + OBED_DO.m;
+}
+
+function aktualizujStav() {
+  const aktivni = jeObed();
+  document.getElementById("btn-override").style.display = aktivni ? "" : "none";
+  const aktuView = document.querySelector(".view.active")?.id;
+  if (!aktivni && aktuView !== "view-closed") {
+    clearAuto();
+    pollingPaused = true;
+    showView("closed");
+  } else if (aktivni && aktuView === "view-closed") {
+    pollingPaused = false;
+    showView("idle");
+  }
+}
+
 function goIdle() {
   clearAuto();
   pollingPaused = false;
   document.getElementById("btn-override").classList.remove("highlighted");
-  showView("idle");
+  if (jeObed()) {
+    showView("idle");
+  } else {
+    pollingPaused = true;
+    showView("closed");
+  }
 }
 
 
@@ -783,6 +831,7 @@ function clearAuto() { clearTimeout(autoTimer); clearInterval(countdownInt); }
 const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dospělák"];
 
 function goOverride() {
+  if (!jeObed()) return;
   clearAuto();
   showOverrideGroups();
   showView("override");
@@ -927,7 +976,8 @@ function devSim(uuid) { onFingerprint(uuid); }
 // INIT
 // ======================================================
 connect();
-showView("idle");
+aktualizujStav();
+setInterval(aktualizujStav, 60000); // kontrola každou minutu
 </script>
 </body>
 </html>
