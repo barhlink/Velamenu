@@ -229,7 +229,7 @@ wss.on("connection", (ws, req) => {
         handleOverride(ws, msg.uuid, msg.source || "vydej");
         break;
       case "override_manual":
-        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka, msg.stupen, msg.source || "vydej");
+        handleOverrideManual(ws, msg.jmeno, msg.jidlo, msg.polevka, msg.stupen, msg.skupina, msg.source || "vydej");
         break;
       case "storno":
         handleStorno(msg.uuid);
@@ -293,10 +293,10 @@ function handleOverride(ws, uuid, source) {
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true, source }, null);
 }
 
-function handleOverrideManual(ws, jmeno, jidlo, polevka, stupen, source) {
+function handleOverrideManual(ws, jmeno, jidlo, polevka, stupen, skupina, source) {
   if (!jmeno) return;
   const fakeUuid = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "", stupen: stupen || "" };
+  const dite = { uuid: fakeUuid, jmeno, jidlo, polevka: polevka || "", stupen: stupen || "", skupina: skupina || stupen || "" };
   vydano.add(fakeUuid);
   const zaznam = zaloguj(dite, true, fakeUuid, source);
   broadcast({ type: "vydej_new", dite, cas: zaznam.cas, override: true, source }, null);
@@ -313,7 +313,7 @@ function handleStorno(uuid) {
 }
 
 function zaloguj(dite, override, uuid, source) {
-  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", stupen: dite.stupen || "", cas: cas(), override, source: source || "fp" };
+  const zaznam = { uuid, jmeno: dite.jmeno, jidlo: dite.jidlo, polevka: dite.polevka || "", stupen: dite.stupen || "", skupina: dite.skupina || "", cas: cas(), override, source: source || "fp" };
   log.unshift(zaznam);
   console.log(`[${zaznam.cas}] Vydáno: ${dite.jmeno} — ${dite.jidlo}${override ? " (ručně)" : ""}`);
   ulozVydano();
