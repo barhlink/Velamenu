@@ -1,0 +1,10 @@
+# Seznam páťáků — jedno celé jméno na řádek.
+# Tyto děti se ve vyhledávání a statistikách zobrazí pod "Druhý stupeň",
+# ale velikost porce jim zůstává 1 (první stupeň).
+# Diakritika a velikost písmen nevadí (porovnává se tolerantně).
+# Řádky začínající # jsou komentář.
+#
+# Tento soubor zkopíruj jako data/pataci.txt a vlož reálná jména:
+#
+# Jan Novák
+# Eliška Marková

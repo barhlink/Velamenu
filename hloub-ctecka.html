@@ -844,7 +844,7 @@ function showOverrideGroups() {
   document.getElementById("override-search").style.display = "none";
   document.getElementById("override-search").value = "";
 
-  const present = [...new Set(deti.map(d => d.stupen || "—"))];
+  const present = [...new Set(deti.map(d => d.skupina || d.stupen || "—"))];
   const groups = [...STUPNE_ORDER.filter(s => present.includes(s)),
                   ...present.filter(s => !STUPNE_ORDER.includes(s)).sort()];
 
@@ -881,7 +881,7 @@ function renderOverrideKids(stupen, query) {
   const q = normQ(query);
   const kids = document.getElementById("override-step-kids");
   const seznam = deti
-    .filter(d => (d.stupen || "—") === stupen && (!q || normQ(d.jmeno).includes(q)))
+    .filter(d => ((d.skupina || d.stupen) || "—") === stupen && (!q || normQ(d.jmeno).includes(q)))
     .sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
 
   kids.innerHTML = seznam.length === 0
@@ -977,7 +977,7 @@ function devSim(uuid) { onFingerprint(uuid); }
 // ======================================================
 connect();
 aktualizujStav();
-setInterval(aktualizujStav, 60000); // kontrola každou minutu
+setInterval(aktualizujStav, 15000); // kontrola každých 15 s
 </script>
 </body>
 </html>
