@@ -149,7 +149,10 @@ body {
 .stats-row {
   display: flex; align-items: baseline; justify-content: flex-end;
   gap: 7px; line-height: 1.28;
+  cursor: pointer; border-radius: 6px; padding: 1px 4px;
+  transition: background 0.15s;
 }
+.stats-row:hover { background: rgba(255,255,255,0.14); }
 .stats-row .sg-label {
   font-size: 11px; font-weight: 800;
   color: rgba(255,255,255,0.6);
@@ -489,15 +492,15 @@ body {
       <div class="header-right">
         <div class="header-stats">
           <div class="stats-groups">
-            <div class="stats-row">
+            <div class="stats-row" onclick="openZbyva('Předškolák')">
               <span class="sg-label">Předškoláci</span>
               <span class="sg-val"><span id="st-pred-v">0</span><span class="sg-o">/<span id="st-pred-o">0</span></span></span>
             </div>
-            <div class="stats-row">
+            <div class="stats-row" onclick="openZbyva('První stupeň')">
               <span class="sg-label">1. stupeň</span>
               <span class="sg-val"><span id="st-prvni-v">0</span><span class="sg-o">/<span id="st-prvni-o">0</span></span></span>
             </div>
-            <div class="stats-row">
+            <div class="stats-row" onclick="openZbyva('Druhý stupeň')">
               <span class="sg-label">2. stupeň</span>
               <span class="sg-val"><span id="st-druhy-v">0</span><span class="sg-o">/<span id="st-druhy-o">0</span></span></span>
             </div>
@@ -639,6 +642,17 @@ body {
   </div>
 </div>
 
+<!-- ZBÝVÁ OVERLAY — read-only seznam dětí, které ještě nepřišly -->
+<div class="overlay" id="zbyva-overlay" style="display:none;">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title" id="zbyva-title">Ještě nepřišli</div>
+    </div>
+    <div id="zbyva-list" style="flex:1;overflow-y:auto;"></div>
+    <button class="panel-cancel" onclick="closeZbyva()">Zavřít</button>
+  </div>
+</div>
+
 <!-- ADMIN STORNO OVERLAY — long-press 3s na location-tag -->
 <div class="overlay" id="storno-overlay">
   <div class="panel">
@@ -740,6 +754,7 @@ function handleMessage(msg) {
       queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, skupina: msg.dite.skupina, source: msg.source });
       addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen, msg.source);
       updateStats();
+      renderZbyva();
       break;
 
     case "vydej_warn":
@@ -755,6 +770,7 @@ function handleMessage(msg) {
     case "storno":
       removeFromQueue(msg.uuid);
       if (currentUuid === msg.uuid) hidePrichozi();
+      renderZbyva();
       break;
 
     case "reset":
@@ -763,6 +779,7 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       hidePrichozi();
       updateStats();
+      renderZbyva();
       break;
   }
 }
@@ -905,6 +922,45 @@ function openOverride() {
 function closeOverride() {
   document.getElementById("override-overlay").classList.remove("open");
 }
+
+// ======================================================
+// ZBÝVÁ — read-only přehled dětí, které ještě nepřišly
+// ======================================================
+let _zbyvaSkupina = null;
+
+function openZbyva(skupina) {
+  _zbyvaSkupina = skupina;
+  document.getElementById("zbyva-overlay").style.display = "flex";
+  renderZbyva();
+}
+
+function closeZbyva() {
+  _zbyvaSkupina = null;
+  document.getElementById("zbyva-overlay").style.display = "none";
+}
+
+function renderZbyva() {
+  if (!_zbyvaSkupina) return;
+  const vydaneUuids = new Set(queueItems.map(i => i.uuid));
+  const seznam = deti
+    .filter(d => statKat(d) === _zbyvaSkupina && !vydaneUuids.has(d.uuid))
+    .sort((a, b) => a.jmeno.localeCompare(b.jmeno, "cs"));
+
+  document.getElementById("zbyva-title").textContent =
+    `${_zbyvaSkupina} — zbývá ${seznam.length}`;
+
+  const list = document.getElementById("zbyva-list");
+  list.innerHTML = seznam.length === 0
+    ? '<div class="panel-empty">Všichni z této skupiny už přišli 🎉</div>'
+    : seznam.map(d => `
+        <div class="panel-item" style="pointer-events:none;">
+          <div style="min-width:0;">
+            <div class="panel-item-name">${esc(d.jmeno)}</div>
+            <div class="panel-item-sub">${esc(d.jidlo || "")}</div>
+          </div>
+        </div>`).join("");
+}
+
 
 function showOverrideGroups() {
   document.getElementById("override-title").textContent = "Vyber dítě";
