@@ -142,6 +142,25 @@ body {
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 
+.stats-groups {
+  text-align: right;
+  margin-bottom: 4px;
+}
+.stats-row {
+  display: flex; align-items: baseline; justify-content: flex-end;
+  gap: 6px; line-height: 1.25;
+}
+.stats-row .sg-label {
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.stats-row .sg-val {
+  font-size: 15px; font-weight: 900; color: white;
+  min-width: 52px; text-align: right;
+}
+.stats-row .sg-val .sg-o { color: rgba(255,255,255,0.55); font-weight: 700; }
+
 .header-time {
   text-align: right;
   border-left: 1px solid rgba(255,255,255,0.2);
@@ -469,8 +488,24 @@ body {
 
       <div class="header-right">
         <div class="header-stats">
-          <div class="stats-count" id="stats-count">0</div>
-          <div class="stats-label">vydáno dnes</div>
+          <div class="stats-groups">
+            <div class="stats-row">
+              <span class="sg-label">Předškoláci</span>
+              <span class="sg-val"><span id="st-pred-v">0</span><span class="sg-o">/<span id="st-pred-o">0</span></span></span>
+            </div>
+            <div class="stats-row">
+              <span class="sg-label">1. stupeň</span>
+              <span class="sg-val"><span id="st-prvni-v">0</span><span class="sg-o">/<span id="st-prvni-o">0</span></span></span>
+            </div>
+            <div class="stats-row">
+              <span class="sg-label">2. stupeň</span>
+              <span class="sg-val"><span id="st-druhy-v">0</span><span class="sg-o">/<span id="st-druhy-o">0</span></span></span>
+            </div>
+          </div>
+          <div style="margin-top:2px;">
+            <span class="stats-count" id="stats-count" style="font-size:13px;">0</span>
+            <span class="stats-label">vydáno celkem</span>
+          </div>
           <div style="margin-top:4px;">
             <span class="conn-dot" id="conn-dot"></span>
             <span class="conn-label" id="conn-label">připojování…</span>
@@ -694,7 +729,7 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       // Obnov frontu z logu (nejstarší → nejnovější = zdola nahoru)
       (msg.log || []).slice().reverse().forEach(item => {
-        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, source: item.source });
+        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, skupina: item.skupina, source: item.source });
         addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen, item.source);
       });
       updateStats();
@@ -702,7 +737,7 @@ function handleMessage(msg) {
 
     case "vydej_new":
       ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
-      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, source: msg.source });
+      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, skupina: msg.dite.skupina, source: msg.source });
       addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen, msg.source);
       updateStats();
       break;
@@ -831,12 +866,34 @@ function removeFromQueue(uuid) {
 
 function updateStats() {
   document.getElementById("stats-count").textContent = queueCount;
+
+  const obj = { "Předškolák": 0, "První stupeň": 0, "Druhý stupeň": 0 };
+  const vyd = { "Předškolák": 0, "První stupeň": 0, "Druhý stupeň": 0 };
+  deti.forEach(d => { const k = statKat(d); if (k) obj[k]++; });
+  queueItems.forEach(item => { const k = statKat(item); if (k) vyd[k]++; });
+
+  document.getElementById("st-pred-v").textContent  = vyd["Předškolák"];
+  document.getElementById("st-pred-o").textContent  = obj["Předškolák"];
+  document.getElementById("st-prvni-v").textContent = vyd["První stupeň"];
+  document.getElementById("st-prvni-o").textContent = obj["První stupeň"];
+  document.getElementById("st-druhy-v").textContent = vyd["Druhý stupeň"];
+  document.getElementById("st-druhy-o").textContent = obj["Druhý stupeň"];
 }
 
 // ======================================================
 // OVERRIDE — 3 kroky: osoba → jídlo → potvrdit
 // ======================================================
 const STUPNE_ORDER = ["Předškolák", "První stupeň", "Druhý stupeň", "Dospělák"];
+
+// Statistická kategorie pro hlavičku: Dospělák i páťáci (skupina) → 2. stupeň.
+function statKat(d) {
+  const g = (d && (d.skupina || d.stupen)) || "";
+  if (g === "Předškolák") return "Předškolák";
+  if (g === "První stupeň") return "První stupeň";
+  if (g === "Druhý stupeň" || g === "Dospělák") return "Druhý stupeň";
+  return null; // neznámé do statistiky nepočítat
+}
+
 let vsichni = [];   // načteno z /vsichni
 let jidla   = [];   // načteno z /jidla
 
@@ -1097,7 +1154,10 @@ function showBezObjJidla(jmeno, stupen) {
 }
 
 function bezObjVydej(jmeno, jidlo, polevka, stupen) {
-  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "", source: "vydej" });
+  // Skupina pro statistiku (páťáci → Druhý stupeň) — dohledej v seznamu vsichni.
+  const zaznam = vsichni.find(d => d.jmeno === jmeno);
+  const skupina = (zaznam && zaznam.skupina) || stupen || "";
+  wsSend({ type: "override_manual", jmeno, jidlo: jidlo || "", polevka: polevka || "", stupen: stupen || "", skupina, source: "vydej" });
   closeBezObj();
 }
 
