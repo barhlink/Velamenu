@@ -59,7 +59,7 @@ def fetch_all(endpoint, constraints):
     return results
 
 def fetch_kids_stupen():
-    """Vrátí mapu kid._id → stupen string."""
+    """Vrátí mapu kid._id → { stupen, dieta }."""
     kids, cursor = [], 0
     while True:
         r = requests.get(f"{BASE}/kids", headers=H, params={"limit": 100, "cursor": cursor})
@@ -71,10 +71,11 @@ def fetch_kids_stupen():
     result = {}
     for k in kids:
         if k.get("kid_category_option_kid_category") == "Dospělák":
-            result[k["_id"]] = "Dospělák"
+            stupen = "Dospělák"
         else:
             class_cat = k.get("class_category_option_class_category", "")
-            result[k["_id"]] = CLASS_MAP.get(class_cat, "")
+            stupen = CLASS_MAP.get(class_cat, "")
+        result[k["_id"]] = {"stupen": stupen, "dieta": bool(k.get("diet_boolean", False))}
     return result
 
 def main():
@@ -100,7 +101,8 @@ def main():
         if not jmeno:
             continue
         kid_id = o.get("kid_custom_kids", "")
-        stupen = stupen_map.get(kid_id, "")
+        meta   = stupen_map.get(kid_id, {"stupen": "", "dieta": False})
+        stupen = meta["stupen"]
         export.append({
             "uuid":    kid_id,
             "jmeno":   jmeno,
@@ -108,6 +110,7 @@ def main():
             "polevka": meal_map.get(o.get("soup_custom_meals", ""), ""),
             "stupen":  stupen,
             "skupina": skupina_pro(jmeno, kid_id, stupen, pataci),
+            "dieta":   meta["dieta"],
         })
 
     with open(f"{DATA}/export.json", "w", encoding="utf-8") as f:
@@ -140,6 +143,7 @@ def main():
         vsichni.append({
             "uuid": k["_id"], "jmeno": jmeno, "stupen": stupen,
             "skupina": skupina_pro(jmeno, k["_id"], stupen, pataci),
+            "dieta": bool(k.get("diet_boolean", False)),
         })
     with open(f"{DATA}/vsichni.json", "w", encoding="utf-8") as f:
         json.dump(vsichni, f, ensure_ascii=False, indent=2)

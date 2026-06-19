@@ -108,6 +108,15 @@ body {
 
 .conn-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5); }
 
+.dieta-badge {
+  display: inline-block;
+  background: #E05050; color: white;
+  font-size: 10px; font-weight: 900;
+  padding: 1px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  vertical-align: middle; margin-left: 6px;
+}
+
 .wave { line-height: 0; margin-top: -1px; }
 .wave svg { display: block; width: 100%; height: 44px; }
 
@@ -493,7 +502,7 @@ body {
       <div class="result-bubble" id="result-bubble">
         <div class="bubble-icon"  id="r-icon"></div>
         <div class="bubble-badge" id="r-badge"></div>
-        <div class="bubble-name"  id="r-name"></div>
+        <div class="bubble-name"  id="r-name"><span id="r-dieta" class="dieta-badge" style="display:none;">Dieta</span></div>
         <div class="bubble-meal"  id="r-meal"></div>
         <div class="bubble-meta"  id="r-meta"></div>
         <div class="mini-progress">
@@ -798,7 +807,8 @@ function ukazVysledek(msg) {
   const c = cfg[status] || cfg.err;
   document.getElementById("r-icon").textContent  = c.icon;
   document.getElementById("r-badge").textContent = c.badge;
-  document.getElementById("r-name").textContent  = c.name || "";
+  document.getElementById("r-name").firstChild.nodeValue = c.name || "";
+  document.getElementById("r-dieta").style.display = (dite && dite.dieta) ? "inline-block" : "none";
   document.getElementById("r-meal").textContent  = c.meal;
   document.getElementById("r-meta").textContent  = c.meta;
 
@@ -889,7 +899,7 @@ function renderOverrideKids(stupen, query) {
     : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej(${attr(d.uuid)})">
           <div style="min-width:0;">
-            <div class="panel-item-name">${esc(d.jmeno)}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}${d.dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
             <div class="panel-item-sub">${esc(d.jidlo)}</div>
           </div>
           <div class="panel-item-arrow">›</div>
