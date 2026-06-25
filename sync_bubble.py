@@ -86,8 +86,8 @@ def main():
     meal_map = {
         m["_id"]: {
             "nazev":     m.get("name_text", "").strip(),
-            "dieta":     bool(m.get("diet_boolean", False)),
-            "kategorie": m.get("type_option_meal_type", ""),
+            "dieta":     m.get("type_option_meal_type", "") == "Vegetarian",
+            "kategorie": m.get("category_option_meal_category", ""),
         }
         for m in meals
     }
