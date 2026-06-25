@@ -975,7 +975,7 @@ function renderZbyva() {
         <div class="panel-item" style="pointer-events:none;">
           <div style="min-width:0;">
             <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}${d.jidlo_rostlinka ? ' <span class="rostlinka-badge">🌿 Vege</span>' : ''}</div>
-            <div class="panel-item-sub">${esc(d.jidlo || "")}</div>
+            <div class="panel-item-sub">${d.jidlo_kat ? esc(d.jidlo_kat) + ' · ' : ''}${esc(d.jidlo || "")}</div>
           </div>
         </div>`).join("");
 }
@@ -1037,7 +1037,7 @@ function renderOverrideKids(stupen, query) {
         <div class="panel-item" onclick='overrideConfirm(${attr(d.uuid)}, ${attr(d.jmeno)}, ${attr((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
           <div style="min-width:0;">
             <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}${d.jidlo_rostlinka ? ' <span class="rostlinka-badge">🌿 Vege</span>' : ''}</div>
-            <div class="panel-item-sub">${esc((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))}</div>
+            <div class="panel-item-sub">${d.jidlo_kat ? esc(d.jidlo_kat) + ' · ' : ''}${esc((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");

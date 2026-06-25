@@ -907,8 +907,8 @@ function renderOverrideKids(stupen, query) {
     : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej(${attr(d.uuid)})">
           <div style="min-width:0;">
-            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
-            <div class="panel-item-sub">${esc(d.jidlo)}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}${d.jidlo_rostlinka ? ' <span class="rostlinka-badge">🌿 Vege</span>' : ''}</div>
+            <div class="panel-item-sub">${d.jidlo_kat ? esc(d.jidlo_kat) + ' · ' : ''}${esc(d.jidlo)}</div>
           </div>
           <div class="panel-item-arrow">›</div>
         </div>`).join("");
