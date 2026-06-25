@@ -150,6 +150,14 @@ body {
   text-transform: uppercase; letter-spacing: 0.05em;
   vertical-align: middle; margin-left: 6px;
 }
+.rostlinka-badge {
+  display: inline-block;
+  background: #4CAF50; color: white;
+  font-size: 10px; font-weight: 900;
+  padding: 1px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  vertical-align: middle; margin-left: 6px;
+}
 
 .stats-groups {
   text-align: right;
@@ -555,7 +563,7 @@ body {
         <div class="card-icon" id="c-icon"></div>
         <div class="card-body">
           <div class="card-badge" id="c-badge"></div>
-          <div class="card-name"  id="c-name"><span id="c-name-text"></span><span id="c-dieta" class="dieta-badge" style="display:none;">Dieta</span></div>
+          <div class="card-name"  id="c-name"><span id="c-name-text"></span><span id="c-dieta" class="dieta-badge" style="display:none;">Dieta</span><span id="c-rostlinka" class="rostlinka-badge" style="display:none;">🌿 Vege</span></div>
           <div class="card-meal"  id="c-meal"></div>
           <div class="card-meta"  id="c-meta"></div>
         </div>
@@ -814,6 +822,7 @@ function ukazPrichozi(dite, typ, cas, override) {
   document.getElementById("c-badge").textContent = c.badge;
   document.getElementById("c-name-text").textContent = dite.jmeno;
   document.getElementById("c-dieta").style.display = dite.jidlo_dieta ? "inline-block" : "none";
+  document.getElementById("c-rostlinka").style.display = dite.jidlo_rostlinka ? "inline-block" : "none";
   document.getElementById("c-meal").textContent  = dite.jidlo;
   document.getElementById("c-meta").textContent  = c.meta;
   document.getElementById("c-time").textContent  = cas || "";
@@ -965,7 +974,7 @@ function renderZbyva() {
     : seznam.map(d => `
         <div class="panel-item" style="pointer-events:none;">
           <div style="min-width:0;">
-            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}${d.jidlo_rostlinka ? ' <span class="rostlinka-badge">🌿 Vege</span>' : ''}</div>
             <div class="panel-item-sub">${esc(d.jidlo || "")}</div>
           </div>
         </div>`).join("");
@@ -1027,7 +1036,7 @@ function renderOverrideKids(stupen, query) {
     : seznam.map(d => `
         <div class="panel-item" onclick='overrideConfirm(${attr(d.uuid)}, ${attr(d.jmeno)}, ${attr((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))})'>
           <div style="min-width:0;">
-            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}${d.jidlo_rostlinka ? ' <span class="rostlinka-badge">🌿 Vege</span>' : ''}</div>
             <div class="panel-item-sub">${esc((d.jidlo || "") + (d.polevka ? " · " + d.polevka : ""))}</div>
           </div>
           <div class="panel-item-arrow">›</div>

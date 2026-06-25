@@ -86,7 +86,8 @@ def main():
     meal_map = {
         m["_id"]: {
             "nazev":     m.get("name_text", "").strip(),
-            "dieta":     m.get("type_option_meal_type", "") == "Vegetarian",
+            "dieta":     m.get("category_option_meal_category", "") == "Diet",
+            "rostlinka": m.get("type_option_meal_type", "") == "Vegetarian",
             "kategorie": m.get("category_option_meal_category", ""),
         }
         for m in meals
@@ -115,8 +116,9 @@ def main():
             "uuid":       kid_id,
             "jmeno":      jmeno,
             "jidlo":      jidlo_meta.get("nazev", ""),
-            "jidlo_dieta": jidlo_meta.get("dieta", False),
-            "jidlo_kat":  jidlo_meta.get("kategorie", ""),
+            "jidlo_dieta":    jidlo_meta.get("dieta", False),
+            "jidlo_rostlinka": jidlo_meta.get("rostlinka", False),
+            "jidlo_kat":      jidlo_meta.get("kategorie", ""),
             "polevka":    polevka_meta.get("nazev", ""),
             "stupen":     stupen,
             "skupina":    skupina_pro(jmeno, kid_id, stupen, pataci),
