@@ -59,7 +59,7 @@ def fetch_all(endpoint, constraints):
     return results
 
 def fetch_kids_stupen():
-    """Vrátí mapu kid._id → { stupen, dieta }."""
+    """Vrátí mapu kid._id → stupen (string)."""
     kids, cursor = [], 0
     while True:
         r = requests.get(f"{BASE}/kids", headers=H, params={"limit": 100, "cursor": cursor})
@@ -75,7 +75,7 @@ def fetch_kids_stupen():
         else:
             class_cat = k.get("class_category_option_class_category", "")
             stupen = CLASS_MAP.get(class_cat, "")
-        result[k["_id"]] = {"stupen": stupen, "dieta": bool(k.get("diet_boolean", False))}
+        result[k["_id"]] = stupen
     return result
 
 def main():
@@ -83,7 +83,14 @@ def main():
     print(f"Sync pro {today[:10]}...")
 
     meals = fetch_all("meals", [{"key": "date", "constraint_type": "equals", "value": today}])
-    meal_map = {m["_id"]: m.get("name_text", "").strip() for m in meals}
+    meal_map = {
+        m["_id"]: {
+            "nazev":     m.get("name_text", "").strip(),
+            "dieta":     bool(m.get("diet_boolean", False)),
+            "kategorie": m.get("type_option_meal_type", ""),
+        }
+        for m in meals
+    }
     print(f"Jídel: {len(meals)}")
 
     stupen_map = fetch_kids_stupen()
@@ -101,16 +108,18 @@ def main():
         if not jmeno:
             continue
         kid_id = o.get("kid_custom_kids", "")
-        meta   = stupen_map.get(kid_id, {"stupen": "", "dieta": False})
-        stupen = meta["stupen"]
+        stupen = stupen_map.get(kid_id, "")
+        jidlo_meta  = meal_map.get(o.get("meal_custom_meals", ""), {})
+        polevka_meta = meal_map.get(o.get("soup_custom_meals", ""), {})
         export.append({
-            "uuid":    kid_id,
-            "jmeno":   jmeno,
-            "jidlo":   meal_map.get(o.get("meal_custom_meals", ""), ""),
-            "polevka": meal_map.get(o.get("soup_custom_meals", ""), ""),
-            "stupen":  stupen,
-            "skupina": skupina_pro(jmeno, kid_id, stupen, pataci),
-            "dieta":   meta["dieta"],
+            "uuid":       kid_id,
+            "jmeno":      jmeno,
+            "jidlo":      jidlo_meta.get("nazev", ""),
+            "jidlo_dieta": jidlo_meta.get("dieta", False),
+            "jidlo_kat":  jidlo_meta.get("kategorie", ""),
+            "polevka":    polevka_meta.get("nazev", ""),
+            "stupen":     stupen,
+            "skupina":    skupina_pro(jmeno, kid_id, stupen, pataci),
         })
 
     with open(f"{DATA}/export.json", "w", encoding="utf-8") as f:
@@ -143,7 +152,6 @@ def main():
         vsichni.append({
             "uuid": k["_id"], "jmeno": jmeno, "stupen": stupen,
             "skupina": skupina_pro(jmeno, k["_id"], stupen, pataci),
-            "dieta": bool(k.get("diet_boolean", False)),
         })
     with open(f"{DATA}/vsichni.json", "w", encoding="utf-8") as f:
         json.dump(vsichni, f, ensure_ascii=False, indent=2)

@@ -502,7 +502,7 @@ body {
       <div class="result-bubble" id="result-bubble">
         <div class="bubble-icon"  id="r-icon"></div>
         <div class="bubble-badge" id="r-badge"></div>
-        <div class="bubble-name"  id="r-name"><span id="r-dieta" class="dieta-badge" style="display:none;">Dieta</span></div>
+        <div class="bubble-name"  id="r-name"><span id="r-name-text"></span><span id="r-dieta" class="dieta-badge" style="display:none;">Dieta</span></div>
         <div class="bubble-meal"  id="r-meal"></div>
         <div class="bubble-meta"  id="r-meta"></div>
         <div class="mini-progress">
@@ -807,8 +807,8 @@ function ukazVysledek(msg) {
   const c = cfg[status] || cfg.err;
   document.getElementById("r-icon").textContent  = c.icon;
   document.getElementById("r-badge").textContent = c.badge;
-  document.getElementById("r-name").firstChild.nodeValue = c.name || "";
-  document.getElementById("r-dieta").style.display = (dite && dite.dieta) ? "inline-block" : "none";
+  document.getElementById("r-name-text").textContent = c.name || "";
+  document.getElementById("r-dieta").style.display = (dite && dite.jidlo_dieta) ? "inline-block" : "none";
   document.getElementById("r-meal").textContent  = c.meal;
   document.getElementById("r-meta").textContent  = c.meta;
 
@@ -899,7 +899,7 @@ function renderOverrideKids(stupen, query) {
     : seznam.map(d => `
         <div class="panel-item" onclick="overrideVydej(${attr(d.uuid)})">
           <div style="min-width:0;">
-            <div class="panel-item-name">${esc(d.jmeno)}${d.dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
+            <div class="panel-item-name">${esc(d.jmeno)}${d.jidlo_dieta ? ' <span class="dieta-badge">Dieta</span>' : ''}</div>
             <div class="panel-item-sub">${esc(d.jidlo)}</div>
           </div>
           <div class="panel-item-arrow">›</div>
