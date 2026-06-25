@@ -82,7 +82,7 @@ def main():
     today = date.today().strftime("%Y-%m-%d") + "T04:00:00.000Z"
     print(f"Sync pro {today[:10]}...")
 
-    meals = fetch_all("meals", [{"key": "date", "constraint_type": "equals", "value": today}])
+    meals = fetch_all("meals", [{"key": "date_date", "constraint_type": "equals", "value": today}])
     meal_map = {
         m["_id"]: {
             "nazev":     m.get("name_text", "").strip(),
