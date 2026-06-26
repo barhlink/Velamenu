@@ -588,6 +588,7 @@ body {
   <div class="bottombar">
     <button class="btn-bar bez-obj" id="btn-bez-obj" onclick="openBezObj()">⚡ Bez objednávky</button>
     <button class="btn-bar" onclick="openOverride()">☰ Ruční výběr</button>
+    <button class="btn-bar" onclick="exportCSV()" title="Export do CSV">📊 Export CSV</button>
   </div>
 
 </div>
@@ -760,7 +761,7 @@ function handleMessage(msg) {
       document.getElementById("queue-list").innerHTML = '<div class="queue-empty" id="queue-empty">Zatím nikdo 🙂</div>';
       // Obnov frontu z logu (nejstarší → nejnovější = zdola nahoru)
       (msg.log || []).slice().reverse().forEach(item => {
-        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, skupina: item.skupina, source: item.source });
+        queueItems.push({ uuid: item.uuid, jmeno: item.jmeno, jidlo: item.jidlo, cas: item.cas, override: item.override, stupen: item.stupen, skupina: item.skupina, source: item.source, jidlo_kat: item.jidlo_kat || "", jidlo_rostlinka: item.jidlo_rostlinka || false, jidlo_dieta: item.jidlo_dieta || false });
         addToQueue(item.uuid, item.jmeno, item.jidlo, item.cas, item.override, item.stupen, item.source);
       });
       updateStats();
@@ -768,7 +769,7 @@ function handleMessage(msg) {
 
     case "vydej_new":
       ukazPrichozi(msg.dite, "ok", msg.cas, msg.override);
-      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, skupina: msg.dite.skupina, source: msg.source });
+      queueItems.push({ uuid: msg.dite.uuid, jmeno: msg.dite.jmeno, jidlo: msg.dite.jidlo, cas: msg.cas, override: msg.override, stupen: msg.dite.stupen, skupina: msg.dite.skupina, source: msg.source, jidlo_kat: msg.dite.jidlo_kat || "", jidlo_rostlinka: msg.dite.jidlo_rostlinka || false, jidlo_dieta: msg.dite.jidlo_dieta || false });
       addToQueue(msg.dite.uuid, msg.dite.jmeno, msg.dite.jidlo, msg.cas, msg.override, msg.dite.stupen, msg.source);
       updateStats();
       renderZbyva();
