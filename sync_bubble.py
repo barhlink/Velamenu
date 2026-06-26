@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import requests, json, os, unicodedata
+import requests, json, os, unicodedata, csv
 from datetime import date
+from collections import defaultdict
 
 BASE = "https://menu.skolavela.cz/api/1.1/obj"
 DATA = "/home/velan/velamenu-vydej/data"
@@ -127,6 +128,24 @@ def main():
     with open(f"{DATA}/export.json", "w", encoding="utf-8") as f:
         json.dump(export, f, ensure_ascii=False, indent=2)
     print(f"Uloženo: {len(export)} záznamů")
+
+    # CSV statistika: kolik kterého jídla z které kategorie bylo objednáno
+    dnes_str = date.today().strftime("%Y-%m-%d")
+    stats = defaultdict(lambda: {"pocet": 0, "vege": 0})
+    for r in export:
+        kat  = r.get("jidlo_kat", "") or "—"
+        nazev = r.get("jidlo", "") or "—"
+        klic = (kat, nazev)
+        stats[klic]["pocet"] += 1
+        if r.get("jidlo_rostlinka"):
+            stats[klic]["vege"] += 1
+    csv_path = f"{DATA}/statistika-{dnes_str}.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(["Datum", "Kategorie", "Jídlo", "Počet", "Z toho vege"])
+        for (kat, nazev), v in sorted(stats.items()):
+            w.writerow([dnes_str, kat, nazev, v["pocet"], v["vege"]])
+    print(f"CSV: {csv_path}")
 
     # vsichni.json — všechny aktivní děti (bez ohledu na dnešní objednávku)
     vsichni_raw = []
