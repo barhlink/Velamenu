@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import requests, json, os, unicodedata
+import requests, json, os, unicodedata, csv
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
+from collections import defaultdict
 
 BASE = "https://menu.skolavela.cz/api/1.1/obj"
 DATA = "/home/velan/velamenu-vydej/data"
@@ -60,7 +61,7 @@ def fetch_all(endpoint, constraints):
     return results
 
 def fetch_kids_stupen():
-    """Vrátí mapu kid._id → { stupen, dieta }."""
+    """Vrátí mapu kid._id → stupen (string)."""
     kids, cursor = [], 0
     while True:
         r = requests.get(f"{BASE}/kids", headers=H, params={
@@ -79,7 +80,7 @@ def fetch_kids_stupen():
         else:
             class_cat = k.get("class_category_option_class_category", "")
             stupen = CLASS_MAP.get(class_cat, "")
-        result[k["_id"]] = {"stupen": stupen, "dieta": bool(k.get("diet_boolean", False))}
+        result[k["_id"]] = stupen
     return result
 
 
@@ -101,7 +102,15 @@ def main():
         {"key": "date", "constraint_type": "greater than", "value": den_od},
         {"key": "date", "constraint_type": "less than", "value": den_do},
     ])
-    meal_map = {m["_id"]: m.get("name_text", "").strip() for m in meals}
+    meal_map = {
+        m["_id"]: {
+            "nazev":     m.get("name_text", "").strip(),
+            "dieta":     m.get("category_option_meal_category", "") == "Diet",
+            "rostlinka": m.get("type_option_meal_type", "") == "Vegetarian",
+            "kategorie": m.get("category_option_meal_category", ""),
+        }
+        for m in meals
+    }
     print(f"Jídel: {len(meals)}")
 
     stupen_map = fetch_kids_stupen()
@@ -122,21 +131,39 @@ def main():
         kid_id = o.get("kid_custom_kids", "")
         if kid_id not in stupen_map:
             continue  # dite z jine pobocky (napr. Praha 6) - preskocit
-        meta   = stupen_map[kid_id]
-        stupen = meta["stupen"]
+        stupen = stupen_map[kid_id]
+        jidlo_meta   = meal_map.get(o.get("meal_custom_meals", ""), {})
+        polevka_meta = meal_map.get(o.get("soup_custom_meals", ""), {})
         export.append({
-            "uuid":    kid_id,
-            "jmeno":   jmeno,
-            "jidlo":   meal_map.get(o.get("meal_custom_meals", ""), ""),
-            "polevka": meal_map.get(o.get("soup_custom_meals", ""), ""),
-            "stupen":  stupen,
-            "skupina": skupina_pro(jmeno, kid_id, stupen, pataci),
-            "dieta":   meta["dieta"],
+            "uuid":       kid_id,
+            "jmeno":      jmeno,
+            "jidlo":      jidlo_meta.get("nazev", ""),
+            "jidlo_dieta":    jidlo_meta.get("dieta", False),
+            "jidlo_rostlinka": jidlo_meta.get("rostlinka", False),
+            "jidlo_kat":      jidlo_meta.get("kategorie", ""),
+            "polevka":    polevka_meta.get("nazev", ""),
+            "stupen":     stupen,
+            "skupina":    skupina_pro(jmeno, kid_id, stupen, pataci),
         })
 
     with open(f"{DATA}/export.json", "w", encoding="utf-8") as f:
         json.dump(export, f, ensure_ascii=False, indent=2)
     print(f"Uloženo: {len(export)} záznamů")
+
+    # CSV statistika: kolik kterého jídla z které kategorie bylo objednáno
+    dnes_str = date.today().strftime("%Y-%m-%d")
+    stats = defaultdict(int)
+    for r in export:
+        kat   = r.get("jidlo_kat", "") or "—"
+        nazev = r.get("jidlo", "") or "—"
+        stats[(kat, nazev)] += 1
+    csv_path = f"{DATA}/statistika-{dnes_str}.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(["Datum", "Kategorie", "Jídlo", "Počet"])
+        for (kat, nazev), pocet in sorted(stats.items()):
+            w.writerow([dnes_str, kat, nazev, pocet])
+    print(f"CSV: {csv_path}")
 
     # vsichni.json — všechny aktivní děti (bez ohledu na dnešní objednávku)
     vsichni_raw = []
@@ -167,7 +194,6 @@ def main():
         vsichni.append({
             "uuid": k["_id"], "jmeno": jmeno, "stupen": stupen,
             "skupina": skupina_pro(jmeno, k["_id"], stupen, pataci),
-            "dieta": bool(k.get("diet_boolean", False)),
         })
     with open(f"{DATA}/vsichni.json", "w", encoding="utf-8") as f:
         json.dump(vsichni, f, ensure_ascii=False, indent=2)
