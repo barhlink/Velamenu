@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import requests, json, os, unicodedata
-from datetime import date
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 BASE = "https://menu.skolavela.cz/api/1.1/obj"
 DATA = "/home/velan/velamenu-vydej/data"
@@ -62,7 +63,10 @@ def fetch_kids_stupen():
     """Vrátí mapu kid._id → { stupen, dieta }."""
     kids, cursor = [], 0
     while True:
-        r = requests.get(f"{BASE}/kids", headers=H, params={"limit": 100, "cursor": cursor})
+        r = requests.get(f"{BASE}/kids", headers=H, params={
+            "limit": 100, "cursor": cursor,
+            "constraints": json.dumps([{"key": "campus", "constraint_type": "equals", "value": "P14"}])
+        })
         d = r.json()["response"]
         kids.extend(d["results"])
         if d.get("remaining", 0) == 0: break
@@ -78,11 +82,25 @@ def fetch_kids_stupen():
         result[k["_id"]] = {"stupen": stupen, "dieta": bool(k.get("diet_boolean", False))}
     return result
 
-def main():
-    today = date.today().strftime("%Y-%m-%d") + "T04:00:00.000Z"
-    print(f"Sync pro {today[:10]}...")
 
-    meals = fetch_all("meals", [{"key": "date", "constraint_type": "equals", "value": today}])
+TZ = ZoneInfo("Europe/Prague")
+
+def den_rozsah_utc(d):
+    """Cely den d v prazskem case jako (od, do) UTC ISO retezce pro rozsahovy dotaz."""
+    zacatek = datetime(d.year, d.month, d.day, tzinfo=TZ) - timedelta(seconds=1)
+    konec = datetime(d.year, d.month, d.day, tzinfo=TZ) + timedelta(days=1)
+    fmt = lambda dt: dt.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    return fmt(zacatek), fmt(konec)
+
+def main():
+    dnes = date.today()
+    den_od, den_do = den_rozsah_utc(dnes)
+    print(f"Sync pro {dnes.isoformat()}...")
+
+    meals = fetch_all("meals", [
+        {"key": "date", "constraint_type": "greater than", "value": den_od},
+        {"key": "date", "constraint_type": "less than", "value": den_do},
+    ])
     meal_map = {m["_id"]: m.get("name_text", "").strip() for m in meals}
     print(f"Jídel: {len(meals)}")
 
@@ -90,7 +108,8 @@ def main():
     pataci = nacti_pataky()
 
     orders = fetch_all("orders", [
-        {"key": "date", "constraint_type": "equals", "value": today},
+        {"key": "date", "constraint_type": "greater than", "value": den_od},
+        {"key": "date", "constraint_type": "less than", "value": den_do},
         {"key": "deactivate", "constraint_type": "equals", "value": "false"}
     ])
     print(f"Objednávek: {len(orders)}")
@@ -101,7 +120,9 @@ def main():
         if not jmeno:
             continue
         kid_id = o.get("kid_custom_kids", "")
-        meta   = stupen_map.get(kid_id, {"stupen": "", "dieta": False})
+        if kid_id not in stupen_map:
+            continue  # dite z jine pobocky (napr. Praha 6) - preskocit
+        meta   = stupen_map[kid_id]
         stupen = meta["stupen"]
         export.append({
             "uuid":    kid_id,
@@ -123,7 +144,10 @@ def main():
     while True:
         r = requests.get(f"{BASE}/kids", headers=H, params={
             "limit": 100, "cursor": cursor,
-            "constraints": json.dumps([{"key": "active", "constraint_type": "equals", "value": "true"}])
+            "constraints": json.dumps([
+                {"key": "active", "constraint_type": "equals", "value": "true"},
+                {"key": "campus", "constraint_type": "equals", "value": "P14"}
+            ])
         })
         d = r.json()["response"]
         vsichni_raw.extend(d["results"])
